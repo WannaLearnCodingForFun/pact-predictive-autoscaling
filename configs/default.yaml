@@ -1,0 +1,47 @@
+telemetry:
+  dt: 5.0
+  alpha: 0.35
+  window: 48
+forecast:
+  horizon: 12
+  kernel_size: 3
+  depth: 4
+  channels: 64
+  dropout: 0.10
+  lr: 0.003
+  batch_size: 128
+  kappa: 2.5
+  beta: 0.15
+  huber_delta: 1.0
+capacity:
+  u_target: 0.65
+  r_target: 0.75
+  mu: 40.0
+  slo_ms: 200.0
+  ca2: 1.0
+  cs2: 1.0
+control:
+  q_up: 8.0
+  q_down: 1.0
+  r_act: 0.15
+  s_churn: 0.60
+  n_min: 1
+  n_max: 16
+  delta_max: 4
+  deadband: 1
+  cooldown_s: 60.0
+  u_emergency: 0.92
+drift:
+  eta: 0.2
+  kappa_gamma: 0.02
+  gamma_min: 0.0
+  gamma_max: 0.50
+  xi: 1.0
+  drift_window: 60
+simulator:
+  mem_baseline: 0.20
+  mem_load_coeff: 0.50
+prometheus:
+  base_url: http://localhost:9090
+  timeout_s: 5.0
+  cpu_counter_in_nanoseconds: false
