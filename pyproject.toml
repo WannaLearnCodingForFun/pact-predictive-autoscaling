@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pact"
+version = "0.1.0"
+description = "Predictive Autoscaling with Control-Theoretic enforcement for Docker container pools"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pyyaml>=6.0",
+    "numpy>=1.26",
+    "torch>=2.2",
+    "onnx>=1.16",
+    "onnxruntime>=1.17",
+    "statsmodels>=0.14",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "pytest>=8.0",
+    "types-PyYAML>=6.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["pact*"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+src = ["pact", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["pact", "tests", "scripts"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[[tool.mypy.overrides]]
+module = ["onnxruntime", "onnxruntime.*", "statsmodels", "statsmodels.*"]
+ignore_missing_imports = true
