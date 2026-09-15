@@ -1,0 +1,70 @@
+# Same stack on a 2–3 node Docker Swarm. Overlay networking so replicas
+# on different nodes are distinct capacity, not partitions of one host.
+
+version: "3.8"
+
+services:
+  service:
+    image: pact-service:local
+    environment:
+      WORK_MS: "20"
+      CONCURRENCY: "1"
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 256M
+    networks:
+      - pact
+
+  nginx:
+    image: pact-nginx:local
+    ports:
+      - "8080:80"
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+    networks:
+      - pact
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    deploy:
+      mode: global
+    networks:
+      - pact
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    ports:
+      - "9090:9090"
+    deploy:
+      replicas: 1
+    networks:
+      - pact
+
+  pact:
+    image: pact-controller:local
+    deploy:
+      replicas: 1
+      resources:
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    networks:
+      - pact
+
+networks:
+  pact:
+    driver: overlay

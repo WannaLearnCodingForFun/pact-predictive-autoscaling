@@ -211,6 +211,28 @@ def export_run(
         write_training_csv(results_dir / "training.csv", training_rows)
 
 
+def write_multi_metric_table(
+    path: Path,
+    metrics: Sequence[RunMetrics],
+    metric_names: Sequence[str],
+) -> None:
+    """Write ``method,metric,mean_pm_std,n_runs`` for each requested metric."""
+
+    if not metrics:
+        raise ValueError("no computed metrics")
+    out: list[list[object]] = []
+    for metric_name in metric_names:
+        grouped: dict[str, list[float]] = {}
+        for row in metrics:
+            grouped.setdefault(row.method, []).append(
+                float(getattr(row, metric_name))
+            )
+        for method, values in grouped.items():
+            mean_std, n_runs = format_mean_std(values)
+            out.append([method, metric_name, mean_std, n_runs])
+    _write(path, TABLE_COLUMNS, out)
+
+
 def _require_wide(traces: Sequence[MethodTrace]) -> dict[str, MethodTrace]:
     grouped = _by_method(traces, seed=None)
     missing = [name for name in WIDE_METHODS if name not in grouped]

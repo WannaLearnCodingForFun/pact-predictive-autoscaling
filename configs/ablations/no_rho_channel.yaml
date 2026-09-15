@@ -1,0 +1,3 @@
+# Ablation: drop the per-replica intensity channel ρ.
+ablation:
+  include_rho: false

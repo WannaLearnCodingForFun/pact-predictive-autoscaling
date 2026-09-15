@@ -130,6 +130,24 @@ def chronological_window_splits(
     return train, val, test
 
 
+def windows_in_range(
+    features: NDArray[np.floating],
+    targets: NDArray[np.floating],
+    timestamps: NDArray[np.floating],
+    *,
+    start: int,
+    end: int,
+    window: int,
+    horizon: int,
+) -> WindowSet:
+    """Window a half-open ``[start, end)`` span. Does not touch other splits."""
+
+    feats = np.asarray(features, dtype=np.float32)
+    targs = np.asarray(targets, dtype=np.float32)
+    ts = np.asarray(timestamps, dtype=np.float64)
+    return _windows(feats, targs, ts, start, end, window, horizon)
+
+
 def _windows(
     features: NDArray[np.float32],
     targets: NDArray[np.float32],

@@ -151,6 +151,7 @@ def run_pact(
     dataset: str,
     n_initial: int | None = None,
     forecaster: RepeatObservationForecaster | None = None,
+    method: str = "pact",
 ) -> MethodTrace:
     seed_everything(seed)
     n0 = config.control.n_min if n_initial is None else n_initial
@@ -186,7 +187,7 @@ def run_pact(
         for rec in result.ticks
     ]
     return MethodTrace(
-        method="pact",
+        method=method,
         seed=seed,
         dataset=dataset,
         ts=tuple(ts),

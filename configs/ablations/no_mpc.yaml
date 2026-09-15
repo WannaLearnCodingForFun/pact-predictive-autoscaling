@@ -1,0 +1,3 @@
+# Ablation: apply Ñ(t+1) directly; skip Module 4 (MPC, gates, safety).
+ablation:
+  skip_mpc: true
