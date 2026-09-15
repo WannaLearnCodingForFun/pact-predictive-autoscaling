@@ -18,6 +18,13 @@ from pact.telemetry.collector import Observation
 SECONDS_PER_DAY = 86400.0
 # Eq. 1 (5) + ρ (Eq. 5) + sin/cos time-of-day
 FEATURE_DIM = 8
+RHO_CHANNEL_INDEX = 5
+
+
+def feature_dim(*, include_rho: bool = True) -> int:
+    """Channel count: 8 with ρ, 7 when the ρ ablation drops it."""
+
+    return FEATURE_DIM if include_rho else FEATURE_DIM - 1
 
 
 class FrozenNormaliserError(RuntimeError):
@@ -37,20 +44,16 @@ def time_of_day_features(t_s: float) -> tuple[float, float]:
     return math.sin(angle), math.cos(angle)
 
 
-def feature_vector(obs: Observation) -> tuple[float, ...]:
-    """Observation plus ρ and time-of-day. Length ``FEATURE_DIM``."""
+def feature_vector(
+    obs: Observation, *, include_rho: bool = True
+) -> tuple[float, ...]:
+    """Observation plus ρ and time-of-day. Length ``feature_dim``."""
 
     sin_t, cos_t = time_of_day_features(obs.t_s)
-    return (
-        obs.u,
-        obs.r,
-        obs.lam,
-        obs.ell_p95,
-        obs.n,
-        rho(obs.lam, obs.n),
-        sin_t,
-        cos_t,
-    )
+    core = (obs.u, obs.r, obs.lam, obs.ell_p95, obs.n)
+    if include_rho:
+        return (*core, rho(obs.lam, obs.n), sin_t, cos_t)
+    return (*core, sin_t, cos_t)
 
 
 class EWMASmoother:

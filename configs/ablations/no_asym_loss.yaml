@@ -1,0 +1,3 @@
+# Ablation: symmetric Huber (κ = 1). Overlay on configs/default.yaml.
+forecast:
+  kappa: 1.0

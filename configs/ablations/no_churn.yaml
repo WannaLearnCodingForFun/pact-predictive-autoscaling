@@ -1,0 +1,3 @@
+# Ablation: drop the actuation-churn penalty.
+control:
+  s_churn: 0.0

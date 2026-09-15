@@ -51,11 +51,15 @@ class DriftMonitor:
         tau: int,
         scheduler: RefitScheduler | None = None,
         gamma: float | None = None,
+        freeze_gamma: bool | None = None,
     ) -> None:
         if tau < 0:
             raise ValueError(f"tau must be non-negative, got {tau}")
         self._tau = tau
         self._drift = config.drift
+        self._frozen = (
+            config.ablation.freeze_gamma if freeze_gamma is None else freeze_gamma
+        )
         self._scheduler: RefitScheduler = scheduler or NullRefitScheduler()
         self._tick = 0
         # target_tick -> {issued_at: predicted N}
@@ -101,29 +105,30 @@ class DriftMonitor:
             e = float(n_required_observed - slot[issued_at])
             error = e
             self.last_error = e
-            self.ebar = self._drift.eta * e + (1.0 - self._drift.eta) * self.ebar
-            self.gamma = _clip(
-                self.gamma + self._drift.kappa_gamma * self.ebar,
-                self._drift.gamma_min,
-                self._drift.gamma_max,
-            )
-            if abs(self.ebar) > self._drift.xi:
-                self.consecutive_high += 1
-            else:
-                self.consecutive_high = 0
-            if (
-                self.consecutive_high >= self._drift.drift_window
-                and not self.refit_requested
-            ):
-                self.refit_requested = True
-                logger.warning(
-                    "drift trigger |ebar|=%.4f > xi=%.4f for %s ticks; "
-                    "scheduling refit",
-                    abs(self.ebar),
-                    self._drift.xi,
-                    self.consecutive_high,
+            if not self._frozen:
+                self.ebar = self._drift.eta * e + (1.0 - self._drift.eta) * self.ebar
+                self.gamma = _clip(
+                    self.gamma + self._drift.kappa_gamma * self.ebar,
+                    self._drift.gamma_min,
+                    self._drift.gamma_max,
                 )
-                self._scheduler.schedule()
+                if abs(self.ebar) > self._drift.xi:
+                    self.consecutive_high += 1
+                else:
+                    self.consecutive_high = 0
+                if (
+                    self.consecutive_high >= self._drift.drift_window
+                    and not self.refit_requested
+                ):
+                    self.refit_requested = True
+                    logger.warning(
+                        "drift trigger |ebar|=%.4f > xi=%.4f for %s ticks; "
+                        "scheduling refit",
+                        abs(self.ebar),
+                        self._drift.xi,
+                        self.consecutive_high,
+                    )
+                    self._scheduler.schedule()
         else:
             error = None
             self.last_error = None

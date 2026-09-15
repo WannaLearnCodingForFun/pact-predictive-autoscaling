@@ -1,0 +1,5 @@
+# Ablation: disable cold-start delay.
+# τc is never measured from this file. After cold_start.json is loaded,
+# zero_tau_c overrides the plant/controller delay to 0.
+ablation:
+  zero_tau_c: true

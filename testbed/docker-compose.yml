@@ -1,1 +1,74 @@
-# Testbed stack. Populated in Phase 10.
+# PACT single-host testbed.
+# Workload is single-threaded per container with CONCURRENCY=1 so throughput
+# scales with replica count up to host core count. Set control.n_max below
+# os.cpu_count(); scripts/measure_cold_start.py records both in cold_start.json.
+
+services:
+  service:
+    build: ./service
+    environment:
+      WORK_MS: "20"
+      CONCURRENCY: "1"
+    expose:
+      - "8080"
+    cpus: 1.0
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health')"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+
+  nginx:
+    build: ./nginx
+    ports:
+      - "8080:80"
+    depends_on:
+      - service
+
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.3.0
+    command:
+      - "--nginx.scrape-uri=http://nginx/stub_status"
+    depends_on:
+      - nginx
+    expose:
+      - "9113"
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - "8081:8080"
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - cadvisor
+      - nginx-exporter
+      - service
+
+  pact:
+    build:
+      context: ..
+      dockerfile: testbed/pact/Dockerfile
+    cpus: "0.25"
+    mem_limit: 512m
+    volumes:
+      - ../configs:/app/configs:ro
+      - ../results:/app/results
+    environment:
+      PROMETHEUS_URL: http://prometheus:9090
+    depends_on:
+      - prometheus
+      - nginx
+      - service

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
 from dataclasses import replace
 from pathlib import Path
@@ -143,8 +144,27 @@ def test_docker_backend_scale_is_async_and_idempotent() -> None:
     assert "--scale" in runs[0]
 
 
-@pytest.mark.skip(
-    reason="Phase 10 testbed is not running; real compose scale is not exercised"
+@pytest.mark.skipif(
+    os.environ.get("PACT_TESTBED") != "1",
+    reason="set PACT_TESTBED=1 with a running compose stack to exercise live scale",
 )
 def test_loop_real_testbed_scales_service_up_and_down() -> None:
-    raise AssertionError("unreachable when skipped")
+    compose = Path("testbed/docker-compose.yml")
+    assert compose.is_file()
+    backend = DockerComposeBackend(
+        "service",
+        compose,
+        timeout_s=30.0,
+        poll_s=0.5,
+    )
+    backend.set_replicas(2)
+    thread = backend._thread
+    assert thread is not None
+    thread.join(timeout=35.0)
+    assert backend.desired_replicas == 2
+    backend.set_replicas(1)
+    thread = backend._thread
+    assert thread is not None
+    thread.join(timeout=35.0)
+    assert backend.desired_replicas == 1
+

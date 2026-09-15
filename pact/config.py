@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import math
 from collections.abc import Mapping
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field, fields, replace
 from pathlib import Path
 from typing import Any, TypeVar
 
@@ -87,6 +87,20 @@ class DriftConfig:
 
 
 @dataclass(frozen=True, kw_only=True)
+class AblationConfig:
+    """Flags that disable exactly one component. Defaults are the full system.
+
+    ``tau_c_s`` is still never a YAML measurement. ``zero_tau_c`` overrides the
+    loaded measurement to 0 after ``cold_start.json`` is read.
+    """
+
+    skip_mpc: bool = False
+    freeze_gamma: bool = False
+    include_rho: bool = True
+    zero_tau_c: bool = False
+
+
+@dataclass(frozen=True, kw_only=True)
 class SimulatorConfig:
     """Analytical pool-simulator parameters (not paper control symbols)."""
 
@@ -141,6 +155,7 @@ class PactConfig:
     drift: DriftConfig
     simulator: SimulatorConfig = field(default_factory=SimulatorConfig)
     prometheus: PrometheusConfig = field(default_factory=PrometheusConfig)
+    ablation: AblationConfig = field(default_factory=AblationConfig)
 
 
 def cold_start_ticks(tau_c_s: float, dt: float) -> int:
@@ -184,11 +199,38 @@ def load_config(
     Pass ``tau_c_s`` only in tests. Production loads it from ``cold_start_path``.
     """
 
-    if not yaml_path.is_file():
-        raise FileNotFoundError(f"Config file not found: {yaml_path}")
-    loaded: Any = yaml.safe_load(yaml_path.read_text())
-    raw: dict[str, Any] = {} if loaded is None else loaded
-    if not isinstance(raw, dict):
+    raw = _read_yaml_mapping(yaml_path)
+    return config_from_mapping(
+        raw, cold_start_path=cold_start_path, tau_c_s=tau_c_s
+    )
+
+
+def load_config_overlay(
+    base_path: Path,
+    overlay_path: Path,
+    *,
+    cold_start_path: Path = DEFAULT_COLD_START_PATH,
+    tau_c_s: float | None = None,
+) -> PactConfig:
+    """Load ``base_path`` then apply ``overlay_path`` (ablation YAMLs)."""
+
+    merged = deep_merge(
+        _read_yaml_mapping(base_path), _read_yaml_mapping(overlay_path)
+    )
+    return config_from_mapping(
+        merged, cold_start_path=cold_start_path, tau_c_s=tau_c_s
+    )
+
+
+def config_from_mapping(
+    raw: Mapping[str, Any],
+    *,
+    cold_start_path: Path = DEFAULT_COLD_START_PATH,
+    tau_c_s: float | None = None,
+) -> PactConfig:
+    """Build a ``PactConfig`` from an already-merged mapping."""
+
+    if not isinstance(raw, Mapping):
         raise TypeError(f"Config root must be a mapping, got {type(raw).__name__}")
 
     control_raw = dict(_section(raw, "control"))
@@ -201,6 +243,9 @@ def load_config(
         tau_c_s = load_cold_start_s(cold_start_path)
 
     control = _from_mapping(ControlConfig, control_raw, extra={"tau_c_s": tau_c_s})
+    ablation = _from_mapping(AblationConfig, _section(raw, "ablation"))
+    if ablation.zero_tau_c:
+        control = replace(control, tau_c_s=0.0)
     return PactConfig(
         telemetry=_from_mapping(TelemetryConfig, _section(raw, "telemetry")),
         forecast=_from_mapping(ForecastConfig, _section(raw, "forecast")),
@@ -209,7 +254,31 @@ def load_config(
         drift=_from_mapping(DriftConfig, _section(raw, "drift")),
         simulator=_from_mapping(SimulatorConfig, _section(raw, "simulator")),
         prometheus=_from_mapping(PrometheusConfig, _section(raw, "prometheus")),
+        ablation=ablation,
     )
+
+
+def deep_merge(base: Mapping[str, Any], overlay: Mapping[str, Any]) -> dict[str, Any]:
+    """Recursively merge mappings. Overlay values replace base values."""
+
+    out: dict[str, Any] = dict(base)
+    for key, value in overlay.items():
+        current = out.get(key)
+        if isinstance(current, Mapping) and isinstance(value, Mapping):
+            out[str(key)] = deep_merge(current, value)
+        else:
+            out[str(key)] = value
+    return out
+
+
+def _read_yaml_mapping(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        raise FileNotFoundError(f"Config file not found: {path}")
+    loaded: Any = yaml.safe_load(path.read_text())
+    raw: dict[str, Any] = {} if loaded is None else loaded
+    if not isinstance(raw, dict):
+        raise TypeError(f"Config root must be a mapping, got {type(raw).__name__}")
+    return raw
 
 
 def _section(raw: Mapping[str, Any], name: str) -> Mapping[str, Any]:

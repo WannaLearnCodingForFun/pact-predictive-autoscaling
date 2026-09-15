@@ -28,17 +28,22 @@ from pact.config import (
     cold_start_ticks,
     load_config,
 )
-from pact.control.gates import GateDecision, apply_gates
+from pact.control.gates import (
+    GateDecision,
+    apply_gates,
+    clip_pool_bounds,
+    clip_rate_limit,
+)
 from pact.control.mpc import apply_plant, solve_mpc
 from pact.control.safety import SafetyDecision, evaluate_safety
 from pact.drift.monitor import DriftMonitor, DriftSnapshot, RefitScheduler
 from pact.sim.queue_model import PoolSimulator
 from pact.telemetry.collector import Collector, Observation
 from pact.telemetry.features import (
-    FEATURE_DIM,
     EWMASmoother,
     MinMaxNormaliser,
     SlidingWindow,
+    feature_dim,
     feature_vector,
 )
 
@@ -125,7 +130,10 @@ class ControlLoop:
         self._last_u = 0
         self._last_scale_up_s: float | None = None
         self._ewma = EWMASmoother(config.telemetry.alpha)
-        self._window = SlidingWindow(config.telemetry.window, FEATURE_DIM)
+        n_channels = feature_dim(include_rho=config.ablation.include_rho)
+        self._window = SlidingWindow(config.telemetry.window, n_channels)
+        self._include_rho = config.ablation.include_rho
+        self._skip_mpc = config.ablation.skip_mpc
         self._drift = DriftMonitor(
             config, tau=self._tau, scheduler=refit_scheduler
         )
@@ -195,7 +203,7 @@ class ControlLoop:
             self._simulator.step(self._arrivals[index], self._n_desired)
         obs = self._collector.collect(now_s)
         n_ready = max(int(round(obs.n)), self._config.control.n_min)
-        raw = feature_vector(obs)
+        raw = feature_vector(obs, include_rho=self._include_rho)
         smoothed = self._ewma.update(raw)
         features = (
             self._normaliser.transform(smoothed)
@@ -233,7 +241,12 @@ class ControlLoop:
         drift = self._drift.step(n_required, demand)
 
         safety = evaluate_safety(obs.u, n_ready, self._config)
-        if safety.active:
+        if self._skip_mpc:
+            safety = SafetyDecision(active=False, u=0)
+            applied = _direct_demand_action(n_ready, demand[0], self._config)
+            if applied > 0:
+                self._last_scale_up_s = now_s
+        elif safety.active:
             applied = safety.u
             if applied > 0:
                 self._last_scale_up_s = now_s
@@ -327,6 +340,17 @@ class ControlLoop:
         logger.info("%s", json.dumps(payload, sort_keys=True))
 
 
+def _direct_demand_action(
+    n_current: int, n_hat_next: int, config: PactConfig
+) -> int:
+    """Apply ``Ñ(t+1)`` with shared pool bounds; skip MPC, gates, and safety."""
+
+    ctrl = config.control
+    u = int(n_hat_next) - n_current
+    u = clip_rate_limit(u, ctrl.delta_max)
+    return clip_pool_bounds(u, n_current, ctrl.n_min, ctrl.n_max)
+
+
 def _as_pairs(forecast: NDArray[np.float32]) -> tuple[tuple[float, float], ...]:
     arr = np.asarray(forecast, dtype=np.float64)
     if arr.ndim != 2 or arr.shape[1] < 2:
@@ -336,3 +360,42 @@ def _as_pairs(forecast: NDArray[np.float32]) -> tuple[tuple[float, float], ...]:
 
 def _clip(value: int, lo: int, hi: int) -> int:
     return max(lo, min(hi, value))
+
+
+def main(argv: Sequence[str] | None = None) -> None:
+    """Live loop: Prometheus collector + compose backend. Requires τc on disk."""
+
+    import argparse
+
+    from pact.actuation.docker_backend import DockerComposeBackend
+    from pact.telemetry.collector import PrometheusCollector
+
+    parser = argparse.ArgumentParser(description="PACT live control loop")
+    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH)
+    parser.add_argument("--cold-start", type=Path, default=DEFAULT_COLD_START_PATH)
+    parser.add_argument(
+        "--compose-file", type=Path, default=Path("testbed/docker-compose.yml")
+    )
+    parser.add_argument("--service", default="service")
+    parser.add_argument("--ticks", type=int, default=120)
+    args = parser.parse_args(list(argv) if argv is not None else None)
+    config = load_config(args.config, cold_start_path=args.cold_start)
+    timeout_s = max(config.control.tau_c_s + config.telemetry.dt, 30.0)
+    loop = ControlLoop(
+        config,
+        collector=PrometheusCollector(config),
+        backend=DockerComposeBackend(
+            args.service,
+            args.compose_file,
+            timeout_s=timeout_s,
+            poll_s=1.0,
+        ),
+        forecaster=RepeatObservationForecaster(config.forecast.horizon),
+        n_initial=config.control.n_min,
+    )
+    loop.run(args.ticks)
+
+
+if __name__ == "__main__":
+    main()
+
