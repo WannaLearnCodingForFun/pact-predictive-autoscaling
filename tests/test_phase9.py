@@ -149,6 +149,8 @@ def test_export_schema_and_computed_values(tmp_path: Path) -> None:
     table = list(csv.DictReader((tmp_path / "table6_baselines.csv").open()))
     assert all("±" in row["mean_pm_std"] for row in table)
     assert all(int(row["n_runs"]) == 1 for row in table)
+    assert all(row["ci_95"].startswith("[") for row in table)
+    assert "significant" in table[0]
 
 
 def test_export_refuses_missing_methods(tmp_path: Path) -> None:

@@ -12,7 +12,7 @@ import json
 import logging
 import time
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -73,18 +73,28 @@ class RepeatObservationForecaster:
 
 @dataclass(frozen=True)
 class TickRecord:
+    tick: int
     timestamp: float
+    wall_time_s: float
     observation: Observation
     forecast: tuple[tuple[float, float], ...]
     demand: tuple[int, ...]
+    n_required: int
     mpc_u: int | None
     mpc_cost: float | None
+    mpc_solve_time_s: float | None
     applied_u: int
     gate: GateDecision | None
     safety: SafetyDecision
     drift: DriftSnapshot
     n_desired: int
     deadline_slip_s: float
+
+
+class TickObserver(Protocol):
+    """Optional sink for completed ticks. Failures are swallowed by the loop."""
+
+    def on_tick(self, record: TickRecord) -> None: ...
 
 
 @dataclass(frozen=True)
@@ -110,6 +120,8 @@ class ControlLoop:
         n_initial: int | None = None,
         monotonic: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep,
+        observers: Sequence[TickObserver] | None = None,
+        wall_clock: Callable[[], float] = time.time,
     ) -> None:
         assert_horizon_actionable(config)
         self._config = config
@@ -121,6 +133,10 @@ class ControlLoop:
         self._normaliser = normaliser
         self._monotonic = monotonic
         self._sleep = sleep
+        self._wall_clock = wall_clock
+        self._observers: tuple[TickObserver, ...] = (
+            tuple(observers) if observers is not None else ()
+        )
         self._dt = config.telemetry.dt
         self._tau = cold_start_ticks(config.control.tau_c_s, self._dt)
         n0 = config.control.n_min if n_initial is None else n_initial
@@ -177,25 +193,19 @@ class ControlLoop:
             remaining = deadline - now
             slip = 0.0 if remaining >= 0.0 else -remaining
             slips.append(slip)
-            records.append(
-                TickRecord(
-                    timestamp=record.timestamp,
-                    observation=record.observation,
-                    forecast=record.forecast,
-                    demand=record.demand,
-                    mpc_u=record.mpc_u,
-                    mpc_cost=record.mpc_cost,
-                    applied_u=record.applied_u,
-                    gate=record.gate,
-                    safety=record.safety,
-                    drift=record.drift,
-                    n_desired=record.n_desired,
-                    deadline_slip_s=slip,
-                )
-            )
+            record = replace(record, deadline_slip_s=slip)
+            records.append(record)
+            self._notify(record)
             if remaining > 0.0:
                 self._sleep(remaining)
         return LoopResult(ticks=tuple(records), deadline_slips_s=tuple(slips))
+
+    def _notify(self, record: TickRecord) -> None:
+        for observer in self._observers:
+            try:
+                observer.on_tick(record)
+            except Exception:
+                logger.exception("tick observer failed; control loop continues")
 
     def _tick(self, index: int) -> TickRecord:
         now_s = index * self._dt
@@ -218,6 +228,7 @@ class ControlLoop:
         demand: tuple[int, ...]
         mpc_u: int | None = None
         mpc_cost: float | None = None
+        mpc_solve_time_s: float | None = None
         gate: GateDecision | None = None
         if self._window.full:
             window = np.asarray(self._window.tensor(), dtype=np.float32)
@@ -256,6 +267,7 @@ class ControlLoop:
             )
             mpc_u = sol.u
             mpc_cost = sol.cost
+            mpc_solve_time_s = sol.solve_time_s
             gate = apply_gates(
                 sol.u,
                 n_ready,
@@ -285,12 +297,16 @@ class ControlLoop:
             now_s, obs, forecast_pairs, demand, mpc_u, mpc_cost, applied, gate, drift
         )
         return TickRecord(
+            tick=index,
             timestamp=now_s,
+            wall_time_s=self._wall_clock(),
             observation=obs,
             forecast=forecast_pairs,
             demand=demand,
+            n_required=n_required,
             mpc_u=mpc_u,
             mpc_cost=mpc_cost,
+            mpc_solve_time_s=mpc_solve_time_s,
             applied_u=applied,
             gate=gate,
             safety=safety,

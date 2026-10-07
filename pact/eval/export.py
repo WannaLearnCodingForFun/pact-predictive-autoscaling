@@ -8,6 +8,12 @@ from pathlib import Path
 
 from pact.config import PactConfig
 from pact.eval.runner import MethodTrace, RunMetrics, metrics_from_trace
+from pact.eval.stats import (
+    MethodComparison,
+    apply_holm,
+    compare_methods,
+    sample_mean_std,
+)
 from pact.forecast.train import (
     compute_horizon_error,
     write_horizon_error_csv,
@@ -23,20 +29,21 @@ TRADEOFF_COLUMNS = ("method", "sla_violation", "over_provision")
 ACTIONS_COLUMNS = ("ts", "pact", "reactive", "arima", "lstm")
 UTILISATION_COLUMNS = ("method", "utilisation")
 TRAINING_COLUMNS = ("epoch", "train_loss", "val_loss")
-TABLE_COLUMNS = ("method", "metric", "mean_pm_std", "n_runs")
+TABLE_COLUMNS = (
+    "method",
+    "metric",
+    "mean_pm_std",
+    "n_runs",
+    "ci_95",
+    "p_holm",
+    "significant",
+    "cliffs_delta",
+)
 WIDE_METHODS = ("pact", "reactive", "arima", "lstm")
 
 
 def format_mean_std(values: Sequence[float]) -> tuple[str, int]:
-    series = [float(x) for x in values]
-    n = len(series)
-    if n < 1:
-        raise ValueError("cannot summarise an empty series")
-    mean = sum(series) / n
-    if n == 1:
-        std = 0.0
-    else:
-        std = (sum((x - mean) ** 2 for x in series) / (n - 1)) ** 0.5
+    mean, std, n = sample_mean_std(values)
     return f"{mean:.6g} ± {std:.6g}", n
 
 
@@ -156,19 +163,13 @@ def write_tradeoff_csv(path: Path, metrics: Sequence[RunMetrics]) -> None:
 def write_table_csv(
     path: Path, metrics: Sequence[RunMetrics], *, metric_name: str
 ) -> None:
-    grouped: dict[str, list[float]] = {}
     attr = {
         "sla_violation": "sla_violation",
         "over_provision": "over_provision",
         "recall": "recall",
         "action_count": "action_count",
     }[metric_name]
-    for row in metrics:
-        grouped.setdefault(row.method, []).append(float(getattr(row, attr)))
-    out: list[list[object]] = []
-    for method, values in grouped.items():
-        mean_std, n_runs = format_mean_std(values)
-        out.append([method, metric_name, mean_std, n_runs])
+    out = _comparison_rows(metrics, (metric_name,), attr_names={metric_name: attr})
     _write(path, TABLE_COLUMNS, out)
 
 
@@ -216,21 +217,51 @@ def write_multi_metric_table(
     metrics: Sequence[RunMetrics],
     metric_names: Sequence[str],
 ) -> None:
-    """Write ``method,metric,mean_pm_std,n_runs`` for each requested metric."""
+    """Write mean±std, BCa CI, and Holm-adjusted tests for each metric."""
 
     if not metrics:
         raise ValueError("no computed metrics")
-    out: list[list[object]] = []
-    for metric_name in metric_names:
-        grouped: dict[str, list[float]] = {}
-        for row in metrics:
-            grouped.setdefault(row.method, []).append(
-                float(getattr(row, metric_name))
-            )
-        for method, values in grouped.items():
-            mean_std, n_runs = format_mean_std(values)
-            out.append([method, metric_name, mean_std, n_runs])
+    out = _comparison_rows(metrics, metric_names)
     _write(path, TABLE_COLUMNS, out)
+
+
+def _comparison_rows(
+    metrics: Sequence[RunMetrics],
+    metric_names: Sequence[str],
+    *,
+    attr_names: dict[str, str] | None = None,
+) -> list[list[object]]:
+    if not metrics:
+        raise ValueError("no computed metrics")
+    names = list(metric_names)
+    families: list[MethodComparison] = []
+    labels: list[tuple[str, str]] = []
+    for metric_name in names:
+        attr = metric_name if attr_names is None else attr_names[metric_name]
+        grouped: dict[str, dict[tuple[str, int], float]] = {}
+        for row in metrics:
+            grouped.setdefault(row.method, {})[(row.dataset, row.seed)] = float(
+                getattr(row, attr)
+            )
+        for comparison in compare_methods(grouped, holm=False):
+            families.append(comparison)
+            labels.append((comparison.method, metric_name))
+    families = apply_holm(families)
+    return [
+        _format_table_row(method, metric, row)
+        for (method, metric), row in zip(labels, families, strict=True)
+    ]
+
+
+def _format_table_row(
+    method: str, metric: str, row: MethodComparison
+) -> list[object]:
+    mean_std = f"{row.mean:.6g} ± {row.std:.6g}"
+    ci = f"[{row.ci.low:.6g}, {row.ci.high:.6g}]"
+    p_holm = "" if row.p_holm is None else f"{row.p_holm:.10g}"
+    marker = "*" if row.significant else ""
+    delta = "" if row.cliffs_delta is None else f"{row.cliffs_delta:.6g}"
+    return [method, metric, mean_std, row.n, ci, p_holm, marker, delta]
 
 
 def _require_wide(traces: Sequence[MethodTrace]) -> dict[str, MethodTrace]:

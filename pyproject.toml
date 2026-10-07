@@ -15,6 +15,7 @@ dependencies = [
     "onnx>=1.16",
     "onnxruntime>=1.17",
     "statsmodels>=0.14",
+    "scipy>=1.11",
 ]
 
 [project.optional-dependencies]
@@ -24,9 +25,24 @@ dev = [
     "pytest>=8.0",
     "types-PyYAML>=6.0",
 ]
+viz = [
+    "pandas>=2.0",
+    "matplotlib>=3.8",
+]
+dashboard = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "docker>=7.0",
+    "websockets>=12.0",
+    "orjson>=3.9",
+    "httpx>=0.27",
+]
 
 [tool.setuptools.packages.find]
 include = ["pact*"]
+
+[tool.setuptools.package-data]
+pact = ["dashboard/static/*"]
 
 [tool.ruff]
 target-version = "py311"
@@ -47,5 +63,20 @@ pythonpath = ["."]
 addopts = "-q"
 
 [[tool.mypy.overrides]]
-module = ["onnxruntime", "onnxruntime.*", "statsmodels", "statsmodels.*"]
+module = [
+    "onnxruntime",
+    "onnxruntime.*",
+    "statsmodels",
+    "statsmodels.*",
+    "scipy",
+    "scipy.*",
+    "fastapi",
+    "fastapi.*",
+    "starlette",
+    "starlette.*",
+    "uvicorn",
+    "orjson",
+    "docker",
+    "websockets",
+]
 ignore_missing_imports = true

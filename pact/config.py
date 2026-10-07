@@ -147,6 +147,13 @@ class PrometheusConfig:
 
 
 @dataclass(frozen=True, kw_only=True)
+class EvalConfig:
+    """Experiment-level settings. ``n_seeds`` must be large enough for Wilcoxon."""
+
+    n_seeds: int = 10
+
+
+@dataclass(frozen=True, kw_only=True)
 class PactConfig:
     telemetry: TelemetryConfig
     forecast: ForecastConfig
@@ -156,6 +163,7 @@ class PactConfig:
     simulator: SimulatorConfig = field(default_factory=SimulatorConfig)
     prometheus: PrometheusConfig = field(default_factory=PrometheusConfig)
     ablation: AblationConfig = field(default_factory=AblationConfig)
+    eval: EvalConfig = field(default_factory=EvalConfig)
 
 
 def cold_start_ticks(tau_c_s: float, dt: float) -> int:
@@ -255,6 +263,7 @@ def config_from_mapping(
         simulator=_from_mapping(SimulatorConfig, _section(raw, "simulator")),
         prometheus=_from_mapping(PrometheusConfig, _section(raw, "prometheus")),
         ablation=ablation,
+        eval=_from_mapping(EvalConfig, _section(raw, "eval")),
     )
 
 

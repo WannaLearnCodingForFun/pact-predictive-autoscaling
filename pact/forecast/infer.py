@@ -7,7 +7,6 @@ import time
 from pathlib import Path
 
 import numpy as np
-import onnxruntime as ort
 from numpy.typing import NDArray
 
 logger = logging.getLogger(__name__)
@@ -25,6 +24,13 @@ class OnnxForecaster:
             raise ValueError(f"dt must be positive, got {dt}")
         if not onnx_path.is_file():
             raise FileNotFoundError(f"ONNX model not found: {onnx_path}")
+        try:
+            import onnxruntime as ort
+        except ImportError as exc:
+            raise ImportError(
+                "onnxruntime is required for OnnxForecaster; "
+                "install with: pip install onnxruntime"
+            ) from exc
         options = ort.SessionOptions()
         options.intra_op_num_threads = 1
         options.inter_op_num_threads = 1
