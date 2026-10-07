@@ -38,7 +38,7 @@ from pact.telemetry.features import FEATURE_DIM
 
 CONTROLLER_METHODS = ("pact", "reactive", "arima", "lstm", "static")
 FORECAST_METHODS = ("pact", "reactive", "arima", "lstm")
-N_SEEDS_DEFAULT = 5
+N_SEEDS_DEFAULT = 10
 
 
 @dataclass(frozen=True)
@@ -277,15 +277,21 @@ def run_matrix(
     trace: ArrivalTrace,
     *,
     methods: Sequence[str] = FORECAST_METHODS,
-    seeds: Sequence[int] = (0, 1, 2, 3, 4),
+    seeds: Sequence[int] | None = None,
     split_guard: SplitGuard | None = None,
     evaluate_on: str = "test",
 ) -> list[MethodTrace]:
     """Run each (method, seed) on the same arrival series after a chronological split.
 
     ``evaluate_on='test'`` reads the test split through ``SplitGuard`` once.
+    Default seed count is ``config.eval.n_seeds`` (10 in ``default.yaml``).
     """
 
+    seed_list = (
+        tuple(int(s) for s in seeds)
+        if seeds is not None
+        else tuple(range(config.eval.n_seeds))
+    )
     split = chronological_series_split(trace.arrival_rates, trace.timestamps)
     if evaluate_on == "test":
         guard = split_guard or SplitGuard()
@@ -298,7 +304,7 @@ def run_matrix(
         raise ValueError(f"unknown evaluate_on {evaluate_on!r}")
     out: list[MethodTrace] = []
     for method in methods:
-        for seed in seeds:
+        for seed in seed_list:
             out.append(
                 run_method(
                     method, config, arrivals, seed=int(seed), dataset=trace.name
@@ -312,9 +318,15 @@ def main(argv: Sequence[str] | None = None) -> None:
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH)
     parser.add_argument("--cold-start", type=Path, default=DEFAULT_COLD_START_PATH)
     parser.add_argument("--ticks", type=int, default=80)
-    parser.add_argument("--seeds", type=int, default=N_SEEDS_DEFAULT)
+    parser.add_argument(
+        "--seeds",
+        type=int,
+        default=None,
+        help=f"seed count (default: config eval.n_seeds, {N_SEEDS_DEFAULT})",
+    )
     args = parser.parse_args(list(argv) if argv is not None else None)
     config = load_config(args.config, cold_start_path=args.cold_start)
+    n_seeds = args.seeds if args.seeds is not None else config.eval.n_seeds
     burst = generate_burst(
         "step",
         n_ticks=args.ticks,
@@ -328,7 +340,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         config,
         burst,
         methods=FORECAST_METHODS,
-        seeds=tuple(range(args.seeds)),
+        seeds=tuple(range(n_seeds)),
         evaluate_on="all",
     )
     from pact.eval.export import export_run

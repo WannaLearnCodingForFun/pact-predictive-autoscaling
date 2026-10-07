@@ -26,7 +26,8 @@ control:
   r_act: 0.15
   s_churn: 0.60
   n_min: 1
-  n_max: 16
+  # Must stay below the host's physical core count (single-host caveat).
+  n_max: 6
   delta_max: 4
   deadband: 1
   cooldown_s: 60.0
@@ -45,3 +46,6 @@ prometheus:
   base_url: http://localhost:9090
   timeout_s: 5.0
   cpu_counter_in_nanoseconds: false
+eval:
+  # Wilcoxon cannot reach p < 0.05 for some sign patterns at n=5.
+  n_seeds: 10

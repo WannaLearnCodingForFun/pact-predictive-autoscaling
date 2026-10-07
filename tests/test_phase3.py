@@ -164,6 +164,7 @@ def test_horizon_error_csv_increases_with_h(tmp_path: Path) -> None:
 
 
 def test_onnx_matches_pytorch(tmp_path: Path) -> None:
+    pytest.importorskip("onnxruntime")
     torch.manual_seed(1)
     model = _small_tcn().eval()
     path = tmp_path / "tcn.onnx"
@@ -180,6 +181,7 @@ def test_onnx_matches_pytorch(tmp_path: Path) -> None:
 def test_infer_logs_and_raises_when_over_budget(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    pytest.importorskip("onnxruntime")
     model = _small_tcn().eval()
     path = tmp_path / "tcn.onnx"
     export_onnx_and_verify(model, path)
@@ -194,6 +196,7 @@ def test_infer_logs_and_raises_when_over_budget(
 
 
 def test_train_writes_training_and_horizon_csvs(tmp_path: Path) -> None:
+    pytest.importorskip("onnxruntime")
     cfg = _small_pact_config()
     n = 240
     t = np.arange(n, dtype=np.float64)

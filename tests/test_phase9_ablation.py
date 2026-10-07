@@ -204,6 +204,7 @@ def test_table7_writes_computed_mean_pm_std(tmp_path: Path) -> None:
     assert {row["method"] for row in rows} == {"full", "no_mpc"}
     assert all("±" in row["mean_pm_std"] for row in rows)
     assert all(int(row["n_runs"]) == 2 for row in rows)
+    assert all(row["ci_95"].startswith("[") for row in rows)
 
 
 def test_table7_refuses_empty(tmp_path: Path) -> None:

@@ -139,10 +139,11 @@ def main(argv: Sequence[str] | None = None) -> None:
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG_PATH)
     parser.add_argument("--cold-start", type=Path, default=DEFAULT_COLD_START_PATH)
     parser.add_argument("--ticks", type=int, default=80)
-    parser.add_argument("--seeds", type=int, default=1)
+    parser.add_argument("--seeds", type=int, default=None)
     parser.add_argument("--results", type=Path, default=Path("results"))
     args = parser.parse_args(list(argv) if argv is not None else None)
     config = load_config(args.config, cold_start_path=args.cold_start)
+    n_seeds = args.seeds if args.seeds is not None else config.eval.n_seeds
     burst = generate_burst(
         "step",
         n_ticks=args.ticks,
@@ -155,7 +156,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     traces = run_ablation_matrix(
         config,
         burst.arrival_rates,
-        seeds=tuple(range(args.seeds)),
+        seeds=tuple(range(n_seeds)),
         dataset=burst.name,
     )
     export_table7(args.results / "table7_ablation.csv", traces, config)
