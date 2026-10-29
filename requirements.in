@@ -1,0 +1,10 @@
+# Direct runtime + viz pins. Transitive hashes are compiled into requirements.txt.
+pyyaml==6.0.3
+numpy==2.4.6
+torch==2.14.0
+onnx==1.22.0
+onnxruntime==1.30.0
+statsmodels==0.15.0
+scipy==1.17.1
+pandas==3.0.5
+matplotlib==3.11.2

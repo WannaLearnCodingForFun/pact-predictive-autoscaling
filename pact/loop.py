@@ -14,7 +14,7 @@ import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -98,9 +98,22 @@ class TickObserver(Protocol):
 
 
 @dataclass(frozen=True)
+class TickTiming:
+    """Wall-clock seconds for one controller tick, excluding the plant step."""
+
+    scrape_s: float
+    features_s: float
+    inference_s: float
+    mapping_s: float
+    mpc_s: float
+    actuation_s: float
+
+
+@dataclass(frozen=True)
 class LoopResult:
     ticks: tuple[TickRecord, ...]
     deadline_slips_s: tuple[float, ...]
+    timings: tuple[TickTiming, ...] = ()
 
 
 class ControlLoop:
@@ -153,10 +166,9 @@ class ControlLoop:
         self._drift = DriftMonitor(
             config, tau=self._tau, scheduler=refit_scheduler
         )
-        self._repeat = (
-            forecaster
-            if isinstance(forecaster, RepeatObservationForecaster)
-            else None
+        setter = getattr(forecaster, "set_observation", None)
+        self._set_observation: Callable[[float, float], None] | None = (
+            cast("Callable[[float, float], None]", setter) if callable(setter) else None
         )
 
     @classmethod
@@ -186,19 +198,25 @@ class ControlLoop:
         start = self._monotonic()
         records: list[TickRecord] = []
         slips: list[float] = []
+        timings: list[TickTiming] = []
         for i in range(n_ticks):
             deadline = start + (i + 1) * self._dt
-            record = self._tick(i)
+            record, timing = self._tick(i)
             now = self._monotonic()
             remaining = deadline - now
             slip = 0.0 if remaining >= 0.0 else -remaining
             slips.append(slip)
             record = replace(record, deadline_slip_s=slip)
             records.append(record)
+            timings.append(timing)
             self._notify(record)
             if remaining > 0.0:
                 self._sleep(remaining)
-        return LoopResult(ticks=tuple(records), deadline_slips_s=tuple(slips))
+        return LoopResult(
+            ticks=tuple(records),
+            deadline_slips_s=tuple(slips),
+            timings=tuple(timings),
+        )
 
     def _notify(self, record: TickRecord) -> None:
         for observer in self._observers:
@@ -207,11 +225,13 @@ class ControlLoop:
             except Exception:
                 logger.exception("tick observer failed; control loop continues")
 
-    def _tick(self, index: int) -> TickRecord:
+    def _tick(self, index: int) -> tuple[TickRecord, TickTiming]:
         now_s = index * self._dt
         if self._simulator is not None and self._arrivals is not None:
             self._simulator.step(self._arrivals[index], self._n_desired)
+        t0 = time.perf_counter()
         obs = self._collector.collect(now_s)
+        t1 = time.perf_counter()
         n_ready = max(int(round(obs.n)), self._config.control.n_min)
         raw = feature_vector(obs, include_rho=self._include_rho)
         smoothed = self._ewma.update(raw)
@@ -221,8 +241,9 @@ class ControlLoop:
             else smoothed
         )
         self._window.push(features)
-        if self._repeat is not None:
-            self._repeat.set_observation(obs.u, obs.r)
+        if self._set_observation is not None:
+            self._set_observation(obs.u, obs.r)
+        t2 = time.perf_counter()
 
         forecast_pairs: tuple[tuple[float, float], ...]
         demand: tuple[int, ...]
@@ -230,26 +251,25 @@ class ControlLoop:
         mpc_cost: float | None = None
         mpc_solve_time_s: float | None = None
         gate: GateDecision | None = None
+        t_inf0 = time.perf_counter()
         if self._window.full:
             window = np.asarray(self._window.tensor(), dtype=np.float32)
             raw_fc = self._forecaster.predict(window)
             forecast_pairs = _as_pairs(raw_fc)
-            demand = tuple(
-                map_to_demand(forecast_pairs, n_ready, self._drift.gamma, self._config)
-            )
         else:
             forecast_pairs = tuple(
                 (float(obs.u), float(obs.r))
                 for _ in range(self._config.forecast.horizon)
             )
-            demand = tuple(
-                map_to_demand(forecast_pairs, n_ready, self._drift.gamma, self._config)
-            )
-
+        t3 = time.perf_counter()
+        demand = tuple(
+            map_to_demand(forecast_pairs, n_ready, self._drift.gamma, self._config)
+        )
         n_required = map_to_demand(
             ((obs.u, obs.r),), n_ready, 0.0, self._config
         )[0]
         drift = self._drift.step(n_required, demand)
+        t4 = time.perf_counter()
 
         safety = evaluate_safety(obs.u, n_ready, self._config)
         if self._skip_mpc:
@@ -277,6 +297,7 @@ class ControlLoop:
             )
             applied = gate.u
             self._last_scale_up_s = gate.last_scale_up_s
+        t5 = time.perf_counter()
 
         self._n_plant, self._pending = apply_plant(
             self._n_plant,
@@ -293,10 +314,19 @@ class ControlLoop:
         )
         self._backend.set_replicas(self._n_desired)
         self._last_u = applied
+        t6 = time.perf_counter()
         self._log_tick(
             now_s, obs, forecast_pairs, demand, mpc_u, mpc_cost, applied, gate, drift
         )
-        return TickRecord(
+        timing = TickTiming(
+            scrape_s=t1 - t0,
+            features_s=t2 - t1,
+            inference_s=t3 - t_inf0 if self._window.full else 0.0,
+            mapping_s=t4 - t3,
+            mpc_s=t5 - t4,
+            actuation_s=t6 - t5,
+        )
+        record = TickRecord(
             tick=index,
             timestamp=now_s,
             wall_time_s=self._wall_clock(),
@@ -314,6 +344,7 @@ class ControlLoop:
             n_desired=self._n_desired,
             deadline_slip_s=0.0,
         )
+        return record, timing
 
     def _log_tick(
         self,

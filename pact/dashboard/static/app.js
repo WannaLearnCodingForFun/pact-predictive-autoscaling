@@ -256,6 +256,7 @@ function boot() {
     .then((m) => {
       meta = Object.assign(meta, m);
       document.getElementById("bind").textContent = m.bind || "127.0.0.1";
+      applyStatus(m);
     })
     .catch(() => undefined);
   fetch("/api/ticks")
@@ -265,6 +266,194 @@ function boot() {
     })
     .catch(() => undefined);
   connect();
+  bindOperator();
+  refreshStatus();
+}
+
+let replayBuffer = [];
+let replayTimer = null;
+let lastRunId = "";
+
+function applyStatus(m) {
+  setText("st-daemon", m.daemon_reachable ? "daemon up" : "daemon down");
+  setText("st-project", m.project_up ? "project up" : "project down");
+  setText("st-replicas", `N ${m.replica_count ?? "—"}`);
+  setText("st-controller", m.controller_running ? "controller run" : "controller stop");
+  setText("st-tauc", m.tau_c_s == null ? "τc —" : `τc ${Number(m.tau_c_s).toFixed(2)}s`);
+}
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+function resetTicks() {
+  ticks.length = 0;
+  render();
+}
+
+function replaceTicks(rows) {
+  ticks.length = 0;
+  for (const t of rows) ticks.push(t);
+  if (ticks.length > 2000) ticks.splice(0, ticks.length - 2000);
+  render();
+}
+
+function selectedMethods() {
+  return Array.from(document.querySelectorAll("input[name=method]:checked")).map((el) => el.value);
+}
+
+function bindOperator() {
+  fillSelect("/api/configs", "cfg-select", "configs");
+  fillSelect("/api/workloads", "trace-select", "traces");
+  const start = document.getElementById("btn-start");
+  const cancel = document.getElementById("btn-cancel");
+  if (start) {
+    start.onclick = () => {
+      const body = {
+        config: document.getElementById("cfg-select").value,
+        trace: document.getElementById("trace-select").value,
+        methods: selectedMethods(),
+        seeds: Number(document.getElementById("seed-count").value || 5),
+        target: document.getElementById("target-select").value,
+        ticks: 40,
+      };
+      post("/api/experiment/start", body).then((run) => {
+        lastRunId = run.id || "";
+        document.getElementById("run-log").textContent = JSON.stringify(run, null, 2);
+        pollRun(lastRunId);
+      });
+    };
+  }
+  if (cancel) {
+    cancel.onclick = () => post("/api/experiment/cancel", { id: lastRunId });
+  }
+  onClick("btn-up", () => post("/api/docker/up", {}));
+  onClick("btn-down", () => post("/api/docker/down", {}));
+  onClick("btn-scale", () => {
+    post("/api/docker/scale", { n: Number(document.getElementById("scale-n").value || 1) });
+  });
+  onClick("btn-measure", () => post("/api/docker/measure_cold_start", { n_reps: 1 }).then(refreshStatus));
+  onClick("btn-replay", () => {
+    const dir = document.getElementById("replay-dir").value.trim();
+    fetch(`/api/replay/ticks?dir=${encodeURIComponent(dir)}`)
+      .then((r) => r.json())
+      .then((body) => {
+        replayBuffer = body.ticks || [];
+        const scrub = document.getElementById("replay-scrub");
+        scrub.max = String(Math.max(replayBuffer.length - 1, 0));
+        replaceTicks(replayBuffer);
+      });
+  });
+  document.querySelectorAll("button.speed").forEach((btn) => {
+    btn.onclick = () => playReplay(Number(btn.getAttribute("data-speed") || 1));
+  });
+  const scrub = document.getElementById("replay-scrub");
+  if (scrub) {
+    scrub.oninput = () => {
+      const n = Number(scrub.value) + 1;
+      replaceTicks(replayBuffer.slice(0, n));
+    };
+  }
+}
+
+function playReplay(speed) {
+  if (replayTimer) clearInterval(replayTimer);
+  if (!replayBuffer.length) return;
+  let i = 0;
+  resetTicks();
+  const ms = Math.max(10, 200 / speed);
+  replayTimer = setInterval(() => {
+    if (i >= replayBuffer.length) {
+      clearInterval(replayTimer);
+      return;
+    }
+    ingest(replayBuffer[i]);
+    document.getElementById("replay-scrub").value = String(i);
+    i += 1;
+  }, ms);
+}
+
+function fillSelect(url, id, key) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  fetch(url)
+    .then((r) => r.json())
+    .then((body) => {
+      el.innerHTML = "";
+      for (const item of body[key] || []) {
+        const opt = document.createElement("option");
+        opt.value = item;
+        opt.textContent = item;
+        el.appendChild(opt);
+      }
+    })
+    .catch(() => undefined);
+}
+
+function post(url, body) {
+  return fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }).then((r) => r.json());
+}
+
+function onClick(id, fn) {
+  const el = document.getElementById(id);
+  if (el) el.onclick = fn;
+}
+
+function pollRun(id) {
+  if (!id) return;
+  const tick = () => {
+    fetch(`/api/experiment/${id}`)
+      .then((r) => r.json())
+      .then((run) => {
+        document.getElementById("run-log").textContent = run.log || run.status;
+        if (run.status === "running" || run.status === "queued") {
+          setTimeout(tick, 800);
+        } else {
+          refreshComparison();
+          refreshStatus();
+        }
+      })
+      .catch(() => undefined);
+  };
+  tick();
+}
+
+function refreshComparison() {
+  fetch("/api/experiment/runs")
+    .then((r) => r.json())
+    .then((body) => {
+      const tbody = document.getElementById("compare-body");
+      if (!tbody) return;
+      tbody.replaceChildren();
+      for (const run of body.runs || []) {
+        for (const row of run.metrics || []) {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td>${run.id}</td><td>${row.method}</td><td>${Number(row.sla_violation).toFixed(3)}</td><td>${Number(row.over_provision).toFixed(3)}</td>`;
+          tr.onclick = () => {
+            document.getElementById("replay-dir").value = run.results_dir;
+            document.getElementById("btn-replay").click();
+          };
+          tbody.appendChild(tr);
+        }
+      }
+    })
+    .catch(() => undefined);
+}
+
+function refreshStatus() {
+  fetch("/api/meta")
+    .then((r) => r.json())
+    .then((m) => {
+      meta = Object.assign(meta, m);
+      applyStatus(m);
+    })
+    .catch(() => undefined);
+  setTimeout(refreshStatus, 4000);
 }
 
 boot();

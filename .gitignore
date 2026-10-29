@@ -1,3 +1,6 @@
+# macOS
+.DS_Store
+
 # Downloaded traces and experiment outputs
 data/raw/
 results/

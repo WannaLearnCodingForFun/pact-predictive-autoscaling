@@ -12,55 +12,132 @@
       <span class="brand">PACT</span>
       <span id="bind">127.0.0.1</span>
       <span id="ws-state" class="muted">connecting</span>
+      <span id="st-daemon" class="pill">daemon —</span>
+      <span id="st-project" class="pill">project —</span>
+      <span id="st-replicas" class="pill">N —</span>
+      <span id="st-controller" class="pill">controller —</span>
+      <span id="st-tauc" class="pill">τc —</span>
     </header>
-    <main class="grid">
-      <section class="panel" data-panel="replicas">
-        <h2>Replicas vs demand</h2>
-        <div id="chart-replicas" class="chart"></div>
-      </section>
-      <section class="panel" data-panel="latency">
-        <h2>Latency</h2>
-        <div id="chart-latency" class="chart"></div>
-      </section>
-      <section class="panel" data-panel="forecast">
-        <h2>Forecast overlay</h2>
-        <div id="chart-forecast" class="chart"></div>
-      </section>
-      <section class="panel" data-panel="control">
-        <h2>Control internals</h2>
-        <div id="chart-control" class="chart"></div>
-      </section>
-      <section class="panel" data-panel="actions">
-        <h2>Action log</h2>
-        <div class="table-wrap">
+    <div class="layout">
+      <aside class="rail">
+        <section>
+          <h2>Experiment</h2>
+          <label>Config
+            <select id="cfg-select"></select>
+          </label>
+          <label>Workload
+            <select id="trace-select"></select>
+          </label>
+          <fieldset>
+            <legend>Methods</legend>
+            <label><input type="checkbox" name="method" value="pact" checked /> PACT</label>
+            <label><input type="checkbox" name="method" value="reactive" checked /> reactive</label>
+            <label><input type="checkbox" name="method" value="arima" checked /> ARIMA</label>
+            <label><input type="checkbox" name="method" value="lstm" checked /> LSTM</label>
+            <label><input type="checkbox" name="method" value="static" /> static</label>
+          </fieldset>
+          <label>Seeds
+            <input id="seed-count" type="number" min="1" max="20" value="5" />
+          </label>
+          <label>Target
+            <select id="target-select">
+              <option value="simulator" selected>simulator</option>
+              <option value="docker">docker testbed</option>
+            </select>
+          </label>
+          <div class="row">
+            <button id="btn-start" type="button">Start</button>
+            <button id="btn-cancel" type="button">Cancel</button>
+          </div>
+          <pre id="run-log" class="log"></pre>
+        </section>
+        <section>
+          <h2>Docker</h2>
+          <div class="row">
+            <button id="btn-up" type="button">Up</button>
+            <button id="btn-down" type="button">Down</button>
+          </div>
+          <label>Scale N
+            <input id="scale-n" type="number" min="1" max="32" value="2" />
+          </label>
+          <button id="btn-scale" type="button">Scale service</button>
+          <button id="btn-measure" type="button">Measure τc</button>
+        </section>
+        <section>
+          <h2>Replay</h2>
+          <label>Results dir
+            <input id="replay-dir" type="text" placeholder="dashboard/runid" />
+          </label>
+          <div class="row">
+            <button id="btn-replay" type="button">Load</button>
+            <button data-speed="1" class="speed">1×</button>
+            <button data-speed="10" class="speed">10×</button>
+            <button data-speed="100" class="speed">100×</button>
+          </div>
+          <label>Scrub
+            <input id="replay-scrub" type="range" min="0" max="0" value="0" />
+          </label>
+        </section>
+        <section>
+          <h2>Comparison</h2>
           <table>
             <thead>
-              <tr>
-                <th>tick</th>
-                <th>u*</th>
-                <th>rate</th>
-                <th>bounds</th>
-                <th>deadband</th>
-                <th>cooldown</th>
-                <th>applied</th>
-                <th>reason</th>
-              </tr>
+              <tr><th>run</th><th>method</th><th>SLA</th><th>over</th></tr>
             </thead>
-            <tbody id="action-log"></tbody>
+            <tbody id="compare-body"></tbody>
           </table>
-        </div>
-      </section>
-      <section class="panel tiles" data-panel="tiles">
-        <h2>Metrics</h2>
-        <div class="tile-row">
-          <div class="tile"><span class="label">SLA violation</span><span id="tile-sla">—</span></div>
-          <div class="tile"><span class="label">Over-provision</span><span id="tile-over">—</span></div>
-          <div class="tile"><span class="label">Scale actions</span><span id="tile-actions">—</span></div>
-          <div class="tile"><span class="label">Mean utilisation</span><span id="tile-util">—</span></div>
-          <div class="tile"><span class="label">Overrides</span><span id="tile-ovr">—</span></div>
-        </div>
-      </section>
-    </main>
+          <div id="chart-tradeoff" class="chart scatter"></div>
+        </section>
+      </aside>
+      <main class="grid">
+        <section class="panel" data-panel="replicas">
+          <h2>Replicas vs demand</h2>
+          <div id="chart-replicas" class="chart"></div>
+        </section>
+        <section class="panel" data-panel="latency">
+          <h2>Latency</h2>
+          <div id="chart-latency" class="chart"></div>
+        </section>
+        <section class="panel" data-panel="forecast">
+          <h2>Forecast overlay</h2>
+          <div id="chart-forecast" class="chart"></div>
+        </section>
+        <section class="panel" data-panel="control">
+          <h2>Control internals</h2>
+          <div id="chart-control" class="chart"></div>
+        </section>
+        <section class="panel" data-panel="actions">
+          <h2>Action log</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>tick</th>
+                  <th>u*</th>
+                  <th>rate</th>
+                  <th>bounds</th>
+                  <th>deadband</th>
+                  <th>cooldown</th>
+                  <th>applied</th>
+                  <th>reason</th>
+                </tr>
+              </thead>
+              <tbody id="action-log"></tbody>
+            </table>
+          </div>
+        </section>
+        <section class="panel tiles" data-panel="tiles">
+          <h2>Metrics</h2>
+          <div class="tile-row">
+            <div class="tile"><span class="label">SLA violation</span><span id="tile-sla">—</span></div>
+            <div class="tile"><span class="label">Over-provision</span><span id="tile-over">—</span></div>
+            <div class="tile"><span class="label">Scale actions</span><span id="tile-actions">—</span></div>
+            <div class="tile"><span class="label">Mean utilisation</span><span id="tile-util">—</span></div>
+            <div class="tile"><span class="label">Overrides</span><span id="tile-ovr">—</span></div>
+          </div>
+        </section>
+      </main>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/uplot@1.6.31/dist/uPlot.iife.min.js"></script>
     <script src="/app.js"></script>
   </body>
