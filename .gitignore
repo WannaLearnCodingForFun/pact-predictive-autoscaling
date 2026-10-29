@@ -6,6 +6,15 @@ data/raw/
 results/
 figures/
 
+# ...except the measured outputs and plots the paper is built from.
+# These are the paper's evidence base: every table and figure in
+# PACT_paper.docx is generated from them, so they are version-controlled.
+!results/
+!results/*.csv
+!results/manifest.json
+!figures/
+!figures/fig_*.png
+
 # Python
 __pycache__/
 *.py[cod]
