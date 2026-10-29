@@ -26,6 +26,62 @@ html, body {
 }
 .brand { color: var(--pact); font-weight: 600; letter-spacing: 0.04em; }
 .muted { color: var(--muted); }
+.pill {
+  border: 1px solid var(--line);
+  padding: 0.1rem 0.45rem;
+  color: var(--muted);
+  font-size: 11px;
+}
+.layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: calc(100vh - 42px);
+}
+.rail {
+  border-right: 1px solid var(--line);
+  padding: 0.75rem;
+  overflow: auto;
+}
+.rail h2 {
+  margin: 0.8rem 0 0.4rem;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.rail label, fieldset {
+  display: block;
+  margin: 0.35rem 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.rail select, .rail input[type="number"], .rail input[type="text"] {
+  width: 100%;
+  margin-top: 0.15rem;
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  padding: 0.25rem;
+}
+.rail button {
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  padding: 0.3rem 0.55rem;
+  margin: 0.15rem 0.15rem 0 0;
+  cursor: pointer;
+}
+.row { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+.log {
+  max-height: 8rem;
+  overflow: auto;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  padding: 0.35rem;
+  font-size: 11px;
+  white-space: pre-wrap;
+}
+.chart.scatter { height: 140px; }
 .grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -65,6 +121,7 @@ tr.override td { color: var(--warn); }
 .tile .label { display: block; color: var(--muted); font-size: 11px; }
 .tile span:last-child { font-size: 1.25rem; }
 .u-legend { font-size: 11px; }
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
+  .layout { grid-template-columns: 1fr; }
   .grid { grid-template-columns: 1fr; }
 }
