@@ -42,6 +42,11 @@ const E4 = csv('e4_ablation_summary.csv');
 const E5 = csv('e5_horizon_law.csv');
 const E6 = csv('e6_frontier.csv');
 const E7 = csv('e7_robustness.csv');
+const E8 = csv('e8_sensitivity.csv');
+const E9 = csv('e9_solvetime.csv');
+const E10 = csv('e10_per_workload.csv');
+const E11 = csv('e11_decisions.csv');
+const E12 = csv('e12_coldstart.csv');
 const MAN = JSON.parse(fs.readFileSync(path.join(RES, 'manifest.json'), 'utf8'));
 
 const by = (rows, k, v) => rows.find(r => r[k] === v);
@@ -173,8 +178,45 @@ function mkTable(header, rows, widths, opts = {}) {
   });
 }
 
+function ALGO(title, lines, caption) {
+  const body = [
+    new Paragraph({
+      spacing: { after: 50 },
+      children: [new TextRun({ text: title, size: 16, bold: true, font: F })],
+    }),
+    ...lines.map(l => new Paragraph({
+      spacing: { after: 0, line: 190 },
+      children: [new TextRun({ text: l, size: 14, font: 'Consolas' })],
+    })),
+  ];
+  if (caption) {
+    body.push(new Paragraph({
+      spacing: { before: 60, after: 0 },
+      children: [new TextRun({ text: caption, size: 14, font: F })],
+    }));
+  }
+  return new Table({
+    width: { size: 4650, type: WidthType.DXA },
+    columnWidths: [4650],
+    borders: {
+      top: { style: BorderStyle.SINGLE, size: 6, color: '444444' },
+      bottom: { style: BorderStyle.SINGLE, size: 6, color: '444444' },
+      left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+      right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+      insideHorizontal: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+      insideVertical: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+    },
+    rows: [new TableRow({ children: [new TableCell({
+      width: { size: 4650, type: WidthType.DXA },
+      margins: { top: 90, bottom: 90, left: 90, right: 90 },
+      children: body,
+    })] })],
+  });
+}
+
 module.exports = {
+  ALGO,
   d, P, RUNS, H1, H2, H3, CAP, BUL, EQ, M, MathRun, MathFraction, MathSum,
-  MathRadical, sub, sup, img, mkTable, csv, E1, E2, E3, E4, E5, E6, E7, MAN,
-  by, f, F,
+  MathRadical, sub, sup, img, mkTable, csv, E1, E2, E3, E4, E5, E6, E7, E8,
+  E9, E10, E11, E12, MAN, by, f, F,
 };
