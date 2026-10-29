@@ -50,6 +50,7 @@ from pact.control.safety import evaluate_safety
 from pact.drift.monitor import DriftMonitor
 from pact.eval.metrics import (
     decision_classification,
+    oscillation_count,
     over_provision_ratio,
     scale_action_count,
     sla_violation_rate,
@@ -325,6 +326,8 @@ def summarise(out: RunOutput, cfg: PactConfig) -> dict[str, float]:
     over = over_provision_ratio(out.n_series, out.required) * 100.0
     actions = scale_action_count(out.n_series)
     cls = decision_classification(out.n_series, out.required)
+    osc = oscillation_count(out.n_series)
+    osc_w = oscillation_count(out.n_series, window=12)
     util = float(np.mean(out.util)) * 100.0
     p95 = float(np.mean(out.p95))
     served = float(np.sum(out.requests))
@@ -335,10 +338,14 @@ def summarise(out: RunOutput, cfg: PactConfig) -> dict[str, float]:
         "sla_violation_pct": viol,
         "over_provision_pct": over,
         "scale_actions": float(actions),
+        "oscillations": float(osc),
+        "oscillations_w12": float(osc_w),
         "mean_util_pct": util,
         "mean_p95_ms": p95,
         "cost_per_1k_req": cost,
         "accuracy": float(cls.accuracy),
+        "hold_f1": float(cls.hold.f1),
+        "scaledown_recall": float(cls.scale_down.recall),
         "scaleup_precision": float(cls.scale_up.precision),
         "scaleup_recall": float(rec),
         "scaleup_f1": float(cls.scale_up.f1),

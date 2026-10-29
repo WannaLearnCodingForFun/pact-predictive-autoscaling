@@ -25,8 +25,8 @@ previous claim, so the paper was rewritten around what the data does show:
 | Cold-start compensation reduces violations | **Not supported within the controller** (Δ = 0.06 pp, p = 0.854). Supported as a *horizon* condition — see below. |
 | Adaptive margin contributes | **Not supported.** γ never left its initial value in any run; the ablation delta is exactly zero on every metric. |
 
-Two findings emerged that the previous draft did not contain, and the paper now
-leads with them:
+Four findings emerged that the previous draft did not contain. The first two
+are the paper's headline results:
 
 **The horizon–dead-time law.** Sweeping cold start (6 values) against forecast
 horizon (10 values) produces a sharp transition in violation rate that lands
@@ -40,7 +40,21 @@ empirically.
 disagree on **18.9 %–66.3 %** of ticks, rising with pool size. The difference
 shows up mainly as churn (at N_max = 32: 67.4 vs 221.3 actions) and as graceful
 versus catastrophic degradation at aggressive operating points (at u* = 0.85:
-**3.75 % vs 17.92 %** violations). Exact solution costs **under 0.26 ms/tick**.
+**3.75 % vs 17.92 %** violations). Exact solution costs **under 1.3 ms/tick** at
+the largest configuration tested, which is 0.023 % of the control interval.
+
+**The cooldown dominates stability, not the churn penalty.** Removing the
+cooldown raises churn from 44.4 to **274.1** actions per run; the churn penalty in
+the objective saturates at a weight of about 1.0. The deadband at its default
+value and the cost asymmetry were both close to inert. This inverts the design's
+assumption about which mechanisms matter.
+
+**The best predictor is not the most accurate one.** Interpolating between the
+persistence and perfect-foresight brackets gives a non-monotone response: the
+violation rate reaches its minimum at **w = 0.8**, not at w = 1.0, for the exact
+controller (0.07 % against 0.82 %). A perfect forecast reproduces noise that the
+controller then tracks, raising churn. This measures directly the paper's
+methodological claim that forecast accuracy is the wrong objective.
 
 ---
 
@@ -57,8 +71,15 @@ All seven ran to completion. Raw outputs are in `results/`.
 | E5 | Horizon × cold-start sweep | 6 × 10 × 3 workloads × 3 seeds × 2 = 1080 | `e5_horizon_law.csv` |
 | E6 | Operating-point frontier | 8 targets × 3 methods × 5 workloads × 3 seeds = 360 | `e6_frontier.csv` |
 | E7 | Forecast-corruption robustness | 8 σ × 2 guard states × 3 workloads × 4 seeds = 192 | `e7_robustness.csv` |
+| E8 | Control-parameter sensitivity, 5 parameters | 26 settings × 5 workloads × 8 seeds = 1040 | `e8_sensitivity.csv` |
+| E9 | Solve-time scaling | 5 Δmax × 5 H × 2 workloads × 4 seeds = 200 | `e9_solvetime.csv` |
+| E10 | Per-workload breakdown | 5 workloads × 4 methods × 10 seeds = 200 | `e10_per_workload.csv` |
+| E11 | Decision-class detail | 4 methods × 5 workloads × 10 seeds = 200 | `e11_decisions.csv` |
+| E12 | Cold-start sensitivity at fixed horizon | 7 τc × 3 methods × 3 workloads × 5 seeds = 315 | `e12_coldstart.csv` |
+| E13 | Predictor-quality interpolation | 8 weights × 2 methods × 5 workloads × 6 seeds = 480 | `e13_predictor_quality.csv` |
+| E14 | Per-tick decision trace | 1 run, 16 ticks reported | `e14_inference_trace.csv` |
 
-Total wall-clock: 162 s. Every table and figure in the paper is generated from
+Total wall-clock: approximately 6 minutes. Every table and figure in the paper is generated from
 these files by `experiments/make_figures.py` and `experiments/paper.js`; no value
 is typed into the paper by hand.
 
@@ -135,8 +156,11 @@ Table 5, which reported those, have been deleted rather than refilled.
 | Ablation in paragraph form | Done — §V-E is prose with a supporting table |
 | Conclusion consistent with results | Done — includes the negative findings |
 | Architecture diagram matches the code | Done — every block names its module; unexercised modules dashed |
-| Plagiarism < 1 % verified | **Not verified.** No checking service reachable. |
-| AI-detector < 1 % verified | **Not verified.** No detector reachable. |
+| Plagiarism 1–2 % verified | **Not verified.** No checking service reachable from this environment. |
+| AI-detector 1–2 % verified | **Not verified.** No detector reachable from this environment. |
+| Literature survey comparative table | Done — Table I, grouped by decision mechanism |
+| Inference-results table | Done — Table XVI, per-tick decision trace with ground truth |
+| Algorithms in standard format | Done — Algorithms 1 and 2 with complexity analysis |
 
 On the originality targets: the text was written for this paper from the measured
 results; no passage was copied from a source. But **the targets have not been
@@ -154,16 +178,25 @@ a sub-1 % result is not something any writing process can guarantee in advance.
 |---|---|
 | `PACT_paper.docx` | The paper, editable, two-column |
 | `PACT_paper.pdf` | Rendered layout — **note: LibreOffice does not render OMML, so equations appear blank in this PDF. They are present and valid in the .docx; open it in Word to see them.** |
-| `results/*.csv` | Raw experiment outputs, 9 files |
+| `results/*.csv` | Raw experiment outputs, 14 files |
 | `results/manifest.json` | Provenance: commit, platform, versions, seed counts, and an explicit list of what was not executed |
-| `figures/*.png` | 9 figures, all plotted from the CSVs |
+| `figures/*.png` | 16 figures, all plotted from the CSVs |
 | `experiments/harness.py` | The measurement harness |
 | `experiments/run_all.py` | Reproduces every result file |
 | `experiments/make_figures.py`, `make_arch.py` | Reproduce every figure |
 | `experiments/paper.js` | Builds the .docx, reading numbers from the CSVs at build time |
 
-To reproduce: `python3 experiments/run_all.py && python3 experiments/make_figures.py
-&& python3 experiments/make_arch.py && node experiments/paper.js`
+To reproduce:
+
+```
+python3 experiments/run_all.py        # E1-E7
+python3 experiments/run_more.py       # E8-E13
+python3 experiments/run_trace.py      # E14
+python3 experiments/make_figures.py
+python3 experiments/make_figures2.py
+python3 experiments/make_arch.py
+node experiments/paper.js
+```
 
 ---
 

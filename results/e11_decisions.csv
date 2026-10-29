@@ -1,0 +1,5 @@
+method,n_runs,accuracy_mean,accuracy_lo,accuracy_hi,scaleup_precision_mean,scaleup_precision_lo,scaleup_precision_hi,scaleup_recall_mean,scaleup_recall_lo,scaleup_recall_hi,scaleup_f1_mean,scaleup_f1_lo,scaleup_f1_hi,hold_f1_mean,hold_f1_lo,hold_f1_hi,scaledown_recall_mean,scaledown_recall_lo,scaledown_recall_hi
+pact-oracle,50,0.6917,0.6766,0.7079,0.1484,0.1294,0.1678,0.0763,0.0664,0.0868,0.0987,0.0865,0.1106,0.8194,0.809,0.8304,0.048,0.0404,0.0565
+pact-persist,50,0.705,0.6937,0.7155,0.3515,0.3201,0.3814,0.21,0.1966,0.2246,0.2562,0.2393,0.2719,0.8209,0.8126,0.8287,0.125,0.1095,0.1435
+rounded-oracle,50,0.6359,0.6121,0.6608,0.0267,0.018,0.0386,0.0274,0.0185,0.0395,0.0271,0.0182,0.039,0.8295,0.8166,0.8431,0.0293,0.0193,0.0416
+reactive,50,0.7324,0.7148,0.751,0.2212,0.19,0.2547,0.0415,0.0331,0.0524,0.0686,0.0556,0.0852,0.844,0.8324,0.8561,0.0136,0.0093,0.0183
