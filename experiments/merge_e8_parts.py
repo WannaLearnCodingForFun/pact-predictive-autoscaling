@@ -36,12 +36,20 @@ def main() -> int:
         print("no parts present; nothing written")
         return 1
 
-    _csv(RESULTS / "e8_sensitivity.csv", rows)
-    print(f"merged {len(ORDER) - len(missing)}/{len(ORDER)} sweeps, "
-          f"{len(rows)} rows")
     if missing:
-        print(f"MISSING (still carrying no exact-solver data): {missing}")
+        # Writing a short e8_sensitivity.csv would be worse than writing
+        # nothing: the document looks up specific parameter values in it, so
+        # a missing sweep becomes an undefined lookup rendered as a blank or
+        # a NaN rather than a visible failure. Park it beside the real file.
+        out = RESULTS / "e8_sensitivity.partial.csv"
+        _csv(out, rows)
+        print(f"merged {len(ORDER) - len(missing)}/{len(ORDER)} sweeps, "
+              f"{len(rows)} rows -> {out.name}")
+        print(f"NOT written to e8_sensitivity.csv; still missing: {missing}")
         return 1
+
+    _csv(RESULTS / "e8_sensitivity.csv", rows)
+    print(f"merged all {len(ORDER)} sweeps, {len(rows)} rows")
     return 0
 
 
