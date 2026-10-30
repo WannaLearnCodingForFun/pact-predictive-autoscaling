@@ -48,7 +48,7 @@ NAME = {
 INK, MUTED = "#0b0b0b", "#52514e"
 
 plt.rcParams.update({
-    "figure.dpi": 200, "savefig.dpi": 400,
+    "figure.dpi": 220, "savefig.dpi": 600,
     "font.family": "serif", "font.serif": ["DejaVu Serif"],
     "font.size": 8, "axes.titlesize": 9, "axes.labelsize": 8,
     "xtick.labelsize": 7.5, "ytick.labelsize": 7.5,
@@ -63,7 +63,16 @@ plt.rcParams.update({
 })
 
 
-def save(fig, name):
+def save(fig, name, layout=True):
+    # Without this the default subplot margins leave a wide white border that
+    # bbox_inches="tight" then crops, so the saved image comes out far smaller
+    # than its figsize and has to be scaled up on the page -- which is what
+    # made the rendered font sizes inconsistent between figures.
+    if layout:
+        try:
+            fig.tight_layout(pad=0.4)
+        except Exception:
+            pass
     fig.savefig(FIG / name, bbox_inches="tight", facecolor="white", pad_inches=0.03)
     plt.close(fig)
     print("  " + name)
@@ -72,7 +81,7 @@ def save(fig, name):
 # ============================================================ Fig: frontier
 def fig_frontier():
     d = pd.read_csv(RES / "e6_frontier.csv")
-    fig, ax = plt.subplots(figsize=(3.4, 2.7))
+    fig, ax = plt.subplots(figsize=(3.35, 2.7))
     for m in ("pact-oracle", "rounded-oracle", "reactive"):
         s = d[d.method == m].sort_values("u_target")
         ax.plot(s.over_mean, s.sla_mean, color=C[m], ls=LS[m], marker=MK[m],
@@ -95,7 +104,7 @@ def fig_frontier():
 def fig_horizon():
     d = pd.read_csv(RES / "e5_horizon_law.csv")
     piv = d.pivot(index="tau_c_s", columns="H", values="pact_sla")
-    fig, ax = plt.subplots(figsize=(3.5, 2.6))
+    fig, ax = plt.subplots(figsize=(3.35, 2.6))
     im = ax.imshow(piv.values, aspect="auto", origin="lower", cmap="YlOrRd",
                    extent=[0, len(piv.columns), 0, len(piv.index)])
     ax.set_xticks(np.arange(len(piv.columns)) + 0.5)
@@ -126,7 +135,7 @@ def fig_horizon():
 # ============================================================ Fig: horizon cliff
 def fig_cliff():
     d = pd.read_csv(RES / "e5_horizon_law.csv")
-    fig, ax = plt.subplots(figsize=(3.4, 2.5))
+    fig, ax = plt.subplots(figsize=(3.35, 2.5))
     cmap = plt.get_cmap("viridis")
     taus = sorted(d.tau_c_s.unique())
     for i, tau in enumerate(taus):
@@ -150,7 +159,7 @@ def fig_rounding():
         ex_act=("exact_actions", "mean"),
         rd_act=("rounded_actions", "mean"),
     ).reset_index()
-    fig, (a1, a2) = plt.subplots(1, 2, figsize=(6.6, 2.4))
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(6.9, 2.4))
     a1.plot(g.n_max, g.disagree, color=C["pact-oracle"], marker="o")
     a1.set_xscale("log", base=2)
     a1.set_xticks(g.n_max)
@@ -181,7 +190,7 @@ def fig_main():
     order = ["static", "reactive", "rounded-persist", "rounded-oracle",
              "pact-persist", "pact-oracle"]
     s = s.set_index("method").loc[order].reset_index()
-    fig, axes = plt.subplots(1, 3, figsize=(6.8, 2.5))
+    fig, axes = plt.subplots(1, 3, figsize=(6.9, 2.5))
     specs = [("sla", "SLA violation (%)"), ("over", "Over-provisioning (%)"),
              ("act", "Scaling actions")]
     for ax, (key, lab) in zip(axes, specs):
@@ -209,7 +218,7 @@ def fig_ablation():
               "no_coldstart": "− cold-start comp.", "no_margin": "− adaptive margin",
               "no_safety": "− safety ceiling"}
     a["lab"] = a.variant.map(labels)
-    fig, (a1, a2) = plt.subplots(1, 2, figsize=(6.6, 2.1), sharey=True)
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(6.9, 2.1), sharey=True)
     y = np.arange(len(a))
     a1.barh(y, a.sla_delta_vs_full, 0.6, color=C["rounded-oracle"],
             edgecolor="white", lw=0.6)
@@ -236,7 +245,7 @@ def fig_robustness():
     r = pd.read_csv(RES / "e7_robustness.csv")
     ref = r[r.forecast_noise_sigma < 0]
     r = r[r.forecast_noise_sigma >= 0]
-    fig, ax = plt.subplots(figsize=(3.4, 2.4))
+    fig, ax = plt.subplots(figsize=(3.35, 2.4))
     for guard, col, lab in ((True, C["pact-oracle"], "Safety ceiling on"),
                             (False, C["rounded-oracle"], "Safety ceiling off")):
         s = r[r.safety_guard == guard].sort_values("forecast_noise_sigma")
@@ -270,7 +279,7 @@ def fig_trace():
         runs[f"{m}-{f}" if m not in ("reactive",) else m] = run_controller(
             method=m, lam=lam, cfg=cfg, forecaster_kind=f)
 
-    fig, (a1, a2) = plt.subplots(2, 1, figsize=(6.6, 3.9), sharex=True,
+    fig, (a1, a2) = plt.subplots(2, 1, figsize=(6.9, 3.9), sharex=True,
                                  gridspec_kw=dict(height_ratios=[1.15, 1]))
     req = runs["pact-oracle"].required
     a1.step(t, req, where="post", color=INK, lw=1.6, label="Required capacity", zorder=4)

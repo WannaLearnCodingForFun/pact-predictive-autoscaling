@@ -46,6 +46,11 @@ from pact.config import (
 )
 from pact.control.gates import apply_gates
 from pact.control.mpc import apply_plant, solve_mpc
+from pact.control.mpc_exact import (
+    ExactBudgetExceeded,
+    exact_is_tractable,
+    solve_mpc_exact,
+)
 from pact.control.safety import evaluate_safety
 from pact.drift.monitor import DriftMonitor
 from pact.eval.metrics import (
@@ -195,6 +200,9 @@ class RunOutput:
     rounding_disagreements: int
     ticks: int
     censored: int = 0
+    solver: str = "exact"
+    exact_ticks: int = 0
+    fallback_ticks: int = 0
 
 
 def run_controller(
@@ -210,8 +218,16 @@ def run_controller(
     use_safety: bool = True,
     n_initial: int = 4,
     lam_forecast: np.ndarray | None = None,
+    solver: str = "auto",
 ) -> RunOutput:
-    """One closed-loop run against the repository's PoolSimulator."""
+    """One closed-loop run against the repository's PoolSimulator.
+
+    ``solver`` selects the integer MPC implementation: ``"exact"`` is the
+    globally optimal solver of :mod:`pact.control.mpc_exact`, ``"greedy"``
+    the enumerate-then-complete-greedily solver of :mod:`pact.control.mpc`.
+    """
+    if solver not in ("exact", "greedy", "auto"):
+        raise ValueError(f"unknown solver {solver!r}")
     run_cfg = cfg
     if not use_churn:
         run_cfg = replace(run_cfg, control=replace(run_cfg.control, s_churn=0.0))
@@ -220,6 +236,21 @@ def run_controller(
 
     sim = PoolSimulator(cfg, n_initial=n_initial)      # plant keeps true tau_c
     tau = cold_start_ticks(run_cfg.control.tau_c_s, run_cfg.telemetry.dt)
+
+    # Pick the integer solver for this configuration. "auto" takes the exact
+    # solver wherever the structural reduction makes it affordable and the
+    # greedy completion where it does not, recording which was used so the
+    # manifest can report the fraction of runs solved exactly.
+    want = solver
+    if want == "auto":
+        want = "exact" if exact_is_tractable(
+            run_cfg.forecast.horizon, tau, run_cfg.control.delta_max,
+            run_cfg.control.n_min, run_cfg.control.n_max,
+        ) else "greedy"
+    mpc_solve = solve_mpc_exact if want == "exact" else solve_mpc
+    solver_used = want
+    exact_ticks = 0
+    fallback_ticks = 0
     plant_tau = cold_start_ticks(cfg.control.tau_c_s, cfg.telemetry.dt)
 
     lam_fc = lam if lam_forecast is None else np.asarray(lam_forecast, dtype=float)
@@ -241,6 +272,7 @@ def run_controller(
     last_demand: list[int] = []
 
     out = RunOutput([], [], [], [], [], [], [], [], 0, 0, len(lam))
+    out.solver = solver_used
 
     static_level = int(math.ceil(float(lam.max()) / (mu * u_star)))
     static_level = max(cfg.control.n_min, min(cfg.control.n_max, static_level))
@@ -269,7 +301,23 @@ def run_controller(
                 u = _relaxed_rounded_u(n_desired, demand, run_cfg, last_u)
             else:
                 if use_mpc:
-                    sol = solve_mpc(n_desired, demand, pending, last_u, run_cfg)
+                    if mpc_solve is solve_mpc_exact:
+                        try:
+                            sol = solve_mpc_exact(
+                                n_desired, demand, pending, last_u, run_cfg
+                            )
+                            exact_ticks += 1
+                        except ExactBudgetExceeded:
+                            # Safety net: the a-priori estimate said this
+                            # configuration was affordable and it was not for
+                            # this state. Fall back for this tick and count it.
+                            sol = solve_mpc(
+                                n_desired, demand, pending, last_u, run_cfg
+                            )
+                            fallback_ticks += 1
+                    else:
+                        sol = solve_mpc(n_desired, demand, pending, last_u, run_cfg)
+                        fallback_ticks += 1
                     out.solve_times.append(sol.solve_time_s)
                     u_raw = float(sol.u)
                     r_u = _relaxed_rounded_u(n_desired, demand, run_cfg, last_u)
@@ -315,6 +363,8 @@ def run_controller(
         out.u_applied.append(u)
         out.gamma.append(gamma)
 
+    out.exact_ticks = exact_ticks
+    out.fallback_ticks = fallback_ticks
     return out
 
 
@@ -353,6 +403,9 @@ def summarise(out: RunOutput, cfg: PactConfig) -> dict[str, float]:
         "mean_solve_ms": float(np.mean(out.solve_times) * 1000.0) if out.solve_times else float("nan"),
         "rounding_disagree_pct": 100.0 * out.rounding_disagreements / max(out.ticks, 1),
         "censored_pct": 100.0 * out.censored / max(out.ticks, 1),
+        "exact_solver": 1.0 if out.solver == "exact" else 0.0,
+        "exact_tick_pct": (100.0 * out.exact_ticks
+                           / max(out.exact_ticks + out.fallback_ticks, 1)),
     }
 
 

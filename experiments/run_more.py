@@ -96,7 +96,7 @@ def e9_solvetime() -> None:
         for H in (4, 8, 12, 20, 30):
             cfg = base_config(horizon=H)
             cfg = replace(cfg, control=replace(cfg.control, delta_max=dmax))
-            ts, acts = [], []
+            ts, acts, exact = [], [], []
             for wl in ("burst", "step"):
                 for seed in range(4):
                     lam = workload(wl, N_TICKS, 7500 + seed)
@@ -104,12 +104,16 @@ def e9_solvetime() -> None:
                                                  forecaster_kind="oracle"), cfg)
                     ts.append(s["mean_solve_ms"])
                     acts.append(s["scale_actions"])
+                    exact.append(s["exact_solver"])
             a = np.asarray(ts, dtype=float)
+            frac = float(np.mean(exact))
             rows.append({"delta_max": dmax, "H": H,
                          "candidates": 2 * dmax + 1,
                          "mean_solve_ms": round(float(a.mean()), 5),
                          "max_solve_ms": round(float(a.max()), 5),
                          "budget_frac_pct": round(float(a.mean()) / 5000.0 * 100.0, 6),
+                         "exact_frac": round(frac, 4),
+                         "solver": "exact" if frac >= 0.999 else "greedy",
                          "n_runs": len(ts)})
     _csv(RESULTS / "e9_solvetime.csv", rows)
 

@@ -1,0 +1,18 @@
+Part 1 - exhaustive validation of solve_mpc_exact
+  cases                            : 400
+  exact attains brute-force optimum: 400/400
+  greedy first action optimal      : 354/400 (88.5%)
+  greedy objective excess mean/max : 7.9684 / 192.8000
+
+Part 2 - greedy-completion gap on the paper configuration
+  tau=9  H=12  m=4  lag=9
+  ticks                        : 1200
+  first actions agree          : 1070/1200 = 89.17%
+  greedy objective worse       : 540 (45.00%)
+  greedy objective better      : 0  (must be 0)
+  mean / max absolute excess   : 1.9697 / 31.8000
+  mean / max relative excess   : 1.148% / 99.531%
+  exact  solve p50/p95/max ms  : 28.341 / 40.939 / 90.924
+  greedy solve p50/p95/max ms  : 0.269 / 0.397 / 1.469
+
+  wrote /home/claude/pactrepo/results/e15_exact_vs_greedy.json

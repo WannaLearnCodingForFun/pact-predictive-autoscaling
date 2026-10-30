@@ -1,5 +1,24 @@
 # Validation Report and Change Summary
 
+> **Status: superseded for all numerical values.**
+>
+> This document records the *first* measurement round, in which the integer
+> MPC was solved by `pact.control.mpc.solve_mpc` — enumeration over the
+> admissible first actions with a greedy completion of the horizon. That
+> solver was subsequently shown not to return the globally optimal first
+> action (it differs from the optimum on 10.83 % of plant states, always in
+> the direction of higher cost), so the controller was replaced with
+> `pact.control.mpc_exact.solve_mpc_exact` and every experiment was re-run.
+>
+> **Every figure in this document therefore describes the superseded
+> controller.** Those results are preserved in `results_greedy_backup/`. For
+> the current numbers see the manuscript and `results/`; for what changed and
+> why, see `REVISION_REPORT.md`.
+>
+> The qualitative conclusions below — which claims the data does and does not
+> support — survived the change; the digits did not.
+
+
 Paper: *Integer-Exact Predictive Control for Container Auto-Scaling: Measuring
 the Cost of Relaxation and the Horizon–Dead-Time Law*
 Repository commit at time of run: see `results/manifest.json`

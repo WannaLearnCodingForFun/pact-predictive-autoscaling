@@ -1,0 +1,47 @@
+{
+  "runner": "experiments/run_tests.py",
+  "pytest": "experiments/_pytest_shim.py (pytest not installable here)",
+  "files": 23,
+  "passed": 67,
+  "failed": 0,
+  "skipped_fixture_based": 18,
+  "import_errors": [
+    [
+      "test_eval_manifest.py",
+      "ModuleNotFoundError(\"No module named 'torch'\")"
+    ],
+    [
+      "test_eval_overhead.py",
+      "ModuleNotFoundError(\"No module named 'torch'\")"
+    ],
+    [
+      "test_eval_robustness.py",
+      "ModuleNotFoundError(\"No module named 'torch'\")"
+    ],
+    [
+      "test_eval_stats.py",
+      "ModuleNotFoundError(\"No module named 'torch'\")"
+    ],
+    [
+      "test_phase3.py",
+      "ModuleNotFoundError(\"No module named 'torch'\")"
+    ],
+    [
+      "test_phase8.py",
+      "ModuleNotFoundError(\"No module named 'torch'\")"
+    ],
+    [
+      "test_phase9.py",
+      "ModuleNotFoundError(\"No module named 'torch'\")"
+    ],
+    [
+      "test_phase9_ablation.py",
+      "ModuleNotFoundError(\"No module named 'torch'\")"
+    ],
+    [
+      "test_phase9_hpsearch.py",
+      "ModuleNotFoundError(\"No module named 'torch'\")"
+    ]
+  ],
+  "failures": []
+}

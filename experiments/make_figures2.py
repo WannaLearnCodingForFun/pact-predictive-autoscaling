@@ -24,7 +24,7 @@ NM = {"pact": "Integer-exact MPC", "rounded": "Relaxed + rounded",
 INK, MUTED = "#0b0b0b", "#52514e"
 
 plt.rcParams.update({
-    "figure.dpi": 200, "savefig.dpi": 400,
+    "figure.dpi": 220, "savefig.dpi": 600,
     "font.family": "serif", "font.serif": ["DejaVu Serif"],
     "font.size": 8, "axes.titlesize": 8.6, "axes.labelsize": 8,
     "xtick.labelsize": 7.4, "ytick.labelsize": 7.4,
@@ -38,7 +38,12 @@ plt.rcParams.update({
 })
 
 
-def save(fig, name):
+def save(fig, name, layout=True):
+    if layout:
+        try:
+            fig.tight_layout(pad=0.4)
+        except Exception:
+            pass
     fig.savefig(FIG / name, bbox_inches="tight", facecolor="white", pad_inches=0.03)
     plt.close(fig)
     print("  " + name)
@@ -53,7 +58,7 @@ def fig_sensitivity():
         ("deadband_theta", "Deadband $\\theta$ (replicas)", False),
         ("asymmetry_qup_over_qdown", "Asymmetry $q^+/q^-$", True),
     ]
-    fig, axgrid = plt.subplots(2, 2, figsize=(6.7, 3.5))
+    fig, axgrid = plt.subplots(2, 2, figsize=(6.9, 3.5))
     axes = axgrid.ravel()
     fig.subplots_adjust(wspace=0.55, hspace=0.62)
     for ax, (key, lab, logx) in zip(axes, panels):
@@ -76,14 +81,14 @@ def fig_sensitivity():
              "Right axis (orange triangles): oscillation count. "
              "Synthetic traces, 5 families × 8 seeds per point.",
              ha="center", fontsize=6.6, color=MUTED)
-    save(fig, "fig_sensitivity.png")
+    save(fig, "fig_sensitivity.png", layout=False)
 
 
 # ===================================================== cooldown trade-off
 def fig_cooldown():
     s = pd.read_csv(RES / "e8_sensitivity.csv")
     d = s[s.parameter == "cooldown_s"].sort_values("value")
-    fig, ax = plt.subplots(figsize=(3.3, 2.4))
+    fig, ax = plt.subplots(figsize=(3.35, 2.4))
     ax.plot(d.act_mean, d.sla_mean, color=C["pact"], marker="o", zorder=3)
     for r in d.itertuples():
         ax.annotate(f"{int(r.value)} s", (r.act_mean, r.sla_mean),
@@ -101,7 +106,7 @@ def fig_cooldown():
 # ===================================================== solve time
 def fig_solvetime():
     s = pd.read_csv(RES / "e9_solvetime.csv")
-    fig, (a1, a2) = plt.subplots(1, 2, figsize=(6.7, 2.3))
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(6.9, 2.3))
     cmap = plt.get_cmap("viridis")
     ds = sorted(s.delta_max.unique())
     for i, dm in enumerate(ds):
@@ -130,7 +135,7 @@ def fig_solvetime():
 # ===================================================== cold-start robustness
 def fig_coldstart():
     c = pd.read_csv(RES / "e12_coldstart.csv")
-    fig, (a1, a2) = plt.subplots(1, 2, figsize=(6.7, 2.4))
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(6.9, 2.4))
     for m in ("pact", "rounded", "reactive"):
         d = c[c.method == m].sort_values("tau_c_s")
         a1.plot(d.tau_c_s, d.sla_mean, color=C[m], ls=LS[m], marker=MK[m],
@@ -157,7 +162,7 @@ def fig_per_workload():
     methods = ["pact-oracle", "rounded-oracle", "reactive", "static"]
     key = {"pact-oracle": "pact", "rounded-oracle": "rounded",
            "reactive": "reactive", "static": "static"}
-    fig, (a1, a2) = plt.subplots(1, 2, figsize=(6.8, 2.5))
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(6.9, 2.5))
     x = np.arange(len(wls))
     w = 0.78 / len(methods)
     for i, m in enumerate(methods):
@@ -193,7 +198,7 @@ def fig_decisions():
     metrics = [("scaleup_recall", "Scale-up recall"),
                ("scaleup_precision", "Scale-up precision"),
                ("hold_f1", "Hold F1"), ("accuracy", "Overall accuracy")]
-    fig, ax = plt.subplots(figsize=(6.7, 2.3))
+    fig, ax = plt.subplots(figsize=(6.9, 2.3))
     x = np.arange(len(metrics))
     w = 0.78 / len(d)
     for i, r in d.iterrows():
@@ -228,7 +233,7 @@ if __name__ == "__main__":
 
 def fig_predictor_quality():
     d = pd.read_csv(RES / "e13_predictor_quality.csv")
-    fig, (a1, a2) = plt.subplots(1, 2, figsize=(6.7, 2.4))
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(6.9, 2.4))
     for m, lab in (("pact", "Integer-exact MPC"), ("rounded", "Relaxed + rounded")):
         s = d[d.method == m].sort_values("oracle_weight")
         a1.errorbar(s.oracle_weight, s.sla_mean, yerr=s.sla_std / np.sqrt(s.n_runs),
