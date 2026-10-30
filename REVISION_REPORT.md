@@ -146,6 +146,32 @@ solve was 90.9 ms, **1.82 % of the 5 000 ms control interval**.
 
 ---
 
+### Cost of exactness, and one optimisation
+
+The exact solve is roughly two orders of magnitude more work per tick than
+the greedy completion. That is the honest price of the claim, and it is
+reported rather than buried; what matters is that the absolute cost stays a
+small fraction of the control interval.
+
+One round of profiling was done, because the re-run cost scales with it.
+The inner loop is the zero-tail rollout, which runs once per enumerated
+prefix — 512k calls per 120 solves at the paper's configuration. It was
+rebuilding an eight-element tuple and re-summing the pending queue at every
+step, and reconstructing a saturation-correction vector that is all zeros
+whenever nothing saturates, which is nearly always. With every tail action
+zero the queue simply drains, so the item landing at stage `m+j` is
+`pipe[j]`; walking that directly removes the tuple churn and the repeated
+sums, and sharing one all-zero correction tuple lets every unsaturated
+prefix share a single tail memo. A 400-tick closed-loop run went from 12.9 s
+to 8.7 s, median solve 20.8 ms.
+
+The six exactness tests were re-run against brute force after the change and
+still pass. That is the reason for having them: a performance rewrite of a
+solver whose whole claim is optimality is exactly where a silent regression
+would hurt most, and the brute-force comparison is what rules it out.
+
+---
+
 ## 4. Reference audit
 
 Every reference was checked against a primary source. Two were fabricated and
@@ -228,7 +254,10 @@ not by substituting synonyms:
 
 ## 6. Document rendering
 
-Three defects made the PDF materially worse than the source.
+Seven defects made the PDF materially worse than the source. The first
+three were found in the first pass; the remaining four surfaced only once
+the pages were rasterised and read, which is the check that should have
+come first.
 
 - **Tables overflowed their frame.** The two-column text block is 10 080
   twips wide, so a body column is 4 840 (3.36 in). Tables were declared at
@@ -250,6 +279,45 @@ Three defects made the PDF materially worse than the source.
   deliberate and worth stating: the equations are no longer editable in
   Word, but they are visible everywhere. The OMML builder (`EQ` in
   `build_paper.js`) is retained if that trade is not wanted.
+- **Every image was 25 % too small.** `docx` sizes images in pixels at
+  96 dpi; the builder passed `inches × 72`, so each figure and equation
+  rendered at 72/96 of its intended width. The architecture figure asked
+  for 6.95 in and was placed at 5.21 in; the display equations landed
+  around 13 pt tall beside 9.5 pt body text, which is why they read as
+  grey smudges rather than mathematics. One constant, but it affected
+  every image in the document.
+- **Figure label sizes were inconsistent between figures.** No plot called
+  `tight_layout`, so the default subplot margins left a wide white border
+  that `bbox_inches="tight"` then cropped. Each PNG therefore came out far
+  smaller than its `figsize` and had to be scaled up on the page — by
+  1.02× to 1.83×, depending on how much white the crop removed. A label
+  specified at 8 pt thus landed anywhere between 8 and 15 pt. Adding
+  `tight_layout` and standardising every figure to one of the two frames
+  the paper uses (3.35 in in-column, 6.90 in full-width) brings all
+  seventeen to 1.00× at ~597 effective dpi.
+- **Captions were separated from what they caption.** Column balancing is
+  free to place a figure in one column and its caption in the next, and
+  did: Table III's caption was stranded alone at the top of a page, and
+  Fig. 2 was dealt into the left column with its caption in the right.
+  Table rows are now `cantSplit` with `keepNext`, and each in-column
+  figure is bound to its caption inside one unbreakable block. A related
+  bug: a wide table opening its one-column section pulled in the caption
+  immediately before it, which was usually the caption of the figure
+  above — that rule now checks what the caption belongs to.
+- **Algorithm blocks wrapped and split.** The pseudocode runs to about 65
+  monospace characters, which does not fit a 3.36 in column at a readable
+  size, so comment tails such as `// Eq. (1)` fell onto lines of their own
+  and Algorithm 2 broke across two pages. Both algorithms now span the
+  text block and cannot split.
+- **The architecture figure's labels overflowed their boxes.** Box
+  geometry is in data units and labels are in points, so the two scale
+  differently with `figsize` and the labels collided with neighbouring
+  boxes. `make_arch.py` now measures each label against the box holding it
+  and shrinks any that overruns, which keeps the diagram correct at
+  whatever width it is rendered.
+
+After these, a sweep of all 26 rendered pages finds no content outside the
+margins.
 
 ---
 

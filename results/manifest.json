@@ -1,6 +1,6 @@
 {
-  "generated_utc": "2026-10-29T21:50:03Z",
-  "git_sha": "5fb39916ab712c0024c8440541c437594e4e9c8f",
+  "generated_utc": "2026-10-30T12:07:01Z",
+  "git_sha": "9677ae411e35f08f9ccce05ce9e6e0f27a9623ee",
   "python": "3.13.16",
   "platform": "Linux-6.18.44-fc-v185-x86_64-with-glibc2.39",
   "numpy": "2.5.3",
@@ -14,6 +14,8 @@
     "sawtooth"
   ],
   "plant": "pact.sim.queue_model.PoolSimulator (analytical, Kingman p95)",
+  "mpc_solver": "pact.control.mpc_exact.solve_mpc_exact -- globally optimal integer solve, validated against exhaustive enumeration in tests/test_mpc_exact.py and experiments/verify_exact.py",
+  "superseded_solver": "pact.control.mpc.solve_mpc enumerates first actions but completes the horizon greedily, so its first action is not globally optimal; it is retained only as the comparison arm of e15",
   "executed": [
     "e1_runs.csv",
     "e1_summary.csv",
@@ -23,7 +25,9 @@
     "e4_ablation_summary.csv",
     "e5_horizon_law.csv",
     "e6_frontier.csv",
-    "e7_robustness.csv"
+    "e7_robustness.csv",
+    "e15_exact_vs_greedy.json",
+    "e15_validation.json"
   ],
   "not_executed": {
     "TCN forecaster training/inference": "torch unavailable and uninstallable (no package-index access)",
@@ -31,7 +35,7 @@
     "ARIMA baseline": "statsmodels unavailable",
     "Docker testbed and measured cold start": "no Docker daemon in this environment",
     "WorldCup98 / Bitbrains traces": "no network access to fetch the archives",
-    "pytest suite": "pytest unavailable; modules verified by direct import and execution"
+    "pytest suite": "pytest unavailable; run with experiments/run_tests.py, a minimal runner that executes fixture-free test functions"
   },
   "forecaster_substitution": "The learned forecaster could not be run. Every controller is instead driven by two bracketing oracles - perfect foresight and persistence - so that controller effects can be separated from forecaster quality. Results that hold under both brackets are properties of the controller."
 }
