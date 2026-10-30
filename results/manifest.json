@@ -1,6 +1,6 @@
 {
-  "generated_utc": "2026-10-30T12:07:01Z",
-  "git_sha": "9677ae411e35f08f9ccce05ce9e6e0f27a9623ee",
+  "generated_utc": "2026-10-30T17:35:04Z",
+  "git_sha": "919e8625d677030e84e8162561f03bcfac7241cf",
   "python": "3.13.16",
   "platform": "Linux-6.18.44-fc-v185-x86_64-with-glibc2.39",
   "numpy": "2.5.3",
@@ -26,6 +26,14 @@
     "e5_horizon_law.csv",
     "e6_frontier.csv",
     "e7_robustness.csv",
+    "e8_sensitivity.csv",
+    "e8_solver_compare.csv",
+    "e9_solvetime.csv",
+    "e10_per_workload.csv",
+    "e11_decisions.csv",
+    "e12_coldstart.csv",
+    "e13_predictor_quality.csv",
+    "e14_inference_trace.csv",
     "e15_exact_vs_greedy.json",
     "e15_validation.json"
   ],

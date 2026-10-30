@@ -347,6 +347,54 @@ that the exact objective never exceeds the greedy one.
 
 ---
 
+## 7b. Final state of the result files
+
+Every experiment E1–E15 has been re-run under `solve_mpc_exact`. The
+sequence took roughly eleven hours of background compute and was done in
+pieces, because the exact solve is about two orders of magnitude more work
+per tick than the completion it replaced.
+
+Two findings came out of the re-run rather than out of the solver change
+itself, and both are in the manuscript:
+
+- **A tuning conclusion was an artifact.** Under the greedy completion,
+  raising the churn weight to unity drove the violation rate to 0.013 % and
+  held it there at s = 1.0, 1.5 and 2.0 — identical to four decimal places
+  across three values. Under the exact solver the same sweep sits near
+  0.58 %. The direction of the effect survives (over-provisioning
+  39.5 → 22.2 %, oscillations 51.9 → 29.3 as s goes 0 → 1); the magnitude
+  did not. Greedy completion zeroes the tail, a zero tail misprices exactly
+  the term s scales, and raising s magnifies the mispricing — so the
+  approximation fails hardest in the parameter a reader would be tuning.
+  `results/e8_solver_compare.csv`, reported in Section V-I.
+- **The rate limit stops binding.** Δmax = 4, 6 and 8 give identical
+  service level, capacity and action counts, because pool bounds rather
+  than the rate limit constrain the action set once Δmax approaches the
+  pool size. Median solve time nonetheless rises 20.8 → 58.8 → 110.9 ms.
+  Raising Δmax past about four buys identical behaviour at five times the
+  compute.
+
+Claims that survived the re-run unchanged, which is worth recording because
+the temptation is to report only what moved:
+
+- The horizon–dead-time transition, at every cold-start setting tested.
+- The integrality gap at aggressive operating points (17.92 % rounded
+  against 3.58 % exact at u\* = 0.85).
+- The absence of a significant service-level advantage at the default
+  operating point: pact against rounded on violations moved from
+  p_holm = 0.083 to 0.122, still not significant, so the paper's hedge
+  stands.
+- The adaptive margin and safety ceiling remain inert.
+
+One number improved: under-configuring the horizon costs 3.69 pp against
+the reactive baseline rather than 6.67 pp, so the exact controller degrades
+less badly when misconfigured.
+
+`results/manifest.json` names the solver, lists all nineteen result files,
+and keeps the `not_executed` block.
+
+---
+
 ## 8. Unresolved limitations
 
 These are unchanged by this revision or newly introduced by it, and none is
