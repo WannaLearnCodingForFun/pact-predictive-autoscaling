@@ -23,7 +23,7 @@ PLANT, CTRL, ENF, OFF = "#b35a21", "#2a78d6", "#3f4650", "#9aa2ad"
 
 plt.rcParams.update({"font.family": "serif", "font.serif": ["DejaVu Serif"]})
 
-fig, ax = plt.subplots(figsize=(11.4, 5.9), dpi=260)
+fig, ax = plt.subplots(figsize=(7.9, 4.1), dpi=560)
 ax.set_xlim(0, 118)
 ax.set_ylim(0, 60.5)
 ax.axis("off")
@@ -37,18 +37,23 @@ def band(x, y, w, h, label):
             fontweight="bold", va="center")
 
 
+FITS = []          # (text artist, width it must fit, in data units)
+
+
 def box(x, y, w, h, title, sub, path, accent, dashed=False):
     ax.add_patch(FancyBboxPatch(
         (x, y), w, h, boxstyle="round,pad=0,rounding_size=0.8",
         fc=BOXF, ec=accent, lw=1.25, ls=(0, (4, 2)) if dashed else "-"))
     ax.add_patch(Rectangle((x, y), 0.55, h, fc=accent, ec="none"))
     cx = x + w / 2 + 0.3
-    ax.text(cx, y + h - 2.1, title, fontsize=8.3, color=INK,
-            fontweight="bold", ha="center", va="center")
-    ax.text(cx, y + h - 4.7, sub, fontsize=6.6, color=GREY, ha="center",
-            va="center", linespacing=1.35)
-    ax.text(cx, y + 1.4, path, fontsize=5.9, color=OFF, ha="center",
-            va="center", style="italic", family="monospace")
+    inner = w - 2.2          # leave a margin inside the box edge
+    FITS.append((ax.text(cx, y + h - 2.1, title, fontsize=8.3, color=INK,
+                         fontweight="bold", ha="center", va="center"), inner))
+    FITS.append((ax.text(cx, y + h - 4.7, sub, fontsize=6.6, color=GREY,
+                         ha="center", va="center", linespacing=1.35), inner))
+    FITS.append((ax.text(cx, y + 1.4, path, fontsize=5.9, color=OFF,
+                         ha="center", va="center", style="italic",
+                         family="monospace"), inner))
 
 
 def arrow(p, q, color=INK, lw=1.15, ls="-"):
@@ -70,7 +75,7 @@ box(5, 45.0, 23, 10.5, "Workload Generator",
     "five synthetic arrival traces\ndiurnal, burst, ramp, step, sawtooth",
     "experiments/harness.py", PLANT)
 box(31, 45.0, 25, 10.5, "Pool Simulator",
-    "M/G/c queue, cold-start delay\nKingman p95 (Eq. 18)",
+    "M/G/c queue, cold-start delay\nKingman p95 (Eq. 4)",
     "pact/sim/queue_model.py", PLANT)
 box(59, 45.0, 25, 10.5, "M1  Telemetry",
     "observation vector (Eq. 1)\nu, r, λ, p95, N",
@@ -82,20 +87,20 @@ box(87, 45.0, 26, 10.5, "M2  Forecaster",
 arrow((28, 50.2), (31, 50.2), color=PLANT)
 arrow((56, 50.2), (59, 50.2), color=PLANT)
 arrow((84, 50.2), (87, 50.2), color=PLANT)
-tag(29.5, 56.0, "λ(t)")
-tag(57.5, 52.0, "state")
-tag(85.5, 52.0, "X(t)")
+tag(29.5, 56.6, "λ(t)")
+tag(57.5, 56.6, "state")
+tag(85.5, 56.6, "X(t)")
 
 arrow((93, 45.0), (88, 33.5), color=CTRL)
 tag(93.6, 39.5, "Ŷ(t)", color=CTRL, fs=7.2, ha="left")
 
 # ---------------- control plane
 box(62, 22.5, 26, 11.0, "M3  Capacity Mapper",
-    "queueing law, margin γ,\nlatency feasibility (Eq. 14–18)",
+    "queueing law, margin γ,\nlatency feasibility (Eq. 2–4)",
     "pact/capacity/mapper.py", CTRL)
 box(33, 22.5, 26, 11.0, "M4  Integer MPC",
-    "exact search over [−Δmax, Δmax]\ndead time τ, churn penalty (Eq. 20–24)",
-    "pact/control/mpc.py", CTRL)
+    "globally optimal integer solve\ndead time τ, churn penalty (Eq. 7–9)",
+    "pact/control/mpc_exact.py", CTRL)
 box(5, 22.5, 25, 11.0, "Gates and Ceiling",
     "deadband, cooldown (Eq. 25)\nsafety override",
     "pact/control/gates.py", CTRL)
@@ -105,14 +110,16 @@ arrow((33, 28.0), (30, 28.0), color=CTRL)
 tag(60.5, 34.6, "Ñ(t+h)", color=CTRL, fs=7.0)
 tag(31.5, 34.6, "u*(t)", color=CTRL, fs=7.0)
 
-ax.add_patch(FancyBboxPatch((62, 18.6), 26, 3.6,
+ax.add_patch(FancyBboxPatch((62, 18.0), 26, 4.4,
                             boxstyle="round,pad=0,rounding_size=0.8",
                             fc=BOXF, ec=CTRL, lw=1.25))
-ax.add_patch(Rectangle((62, 18.6), 0.55, 3.6, fc=CTRL, ec="none"))
-ax.text(75.3, 21.0, "M5  Drift Monitor · margin γ", fontsize=7.4,
-        color=INK, fontweight="bold", ha="center", va="center")
-ax.text(75.3, 19.4, "pact/drift/monitor.py", fontsize=5.8, color=OFF,
-        ha="center", va="center", style="italic", family="monospace")
+ax.add_patch(Rectangle((62, 18.0), 0.55, 4.4, fc=CTRL, ec="none"))
+FITS.append((ax.text(75.3, 21.1, "M5  Drift Monitor · margin γ", fontsize=7.4,
+                     color=INK, fontweight="bold", ha="center",
+                     va="center"), 26 - 2.2))
+FITS.append((ax.text(75.3, 19.1, "pact/drift/monitor.py", fontsize=5.8,
+                     color=OFF, ha="center", va="center", style="italic",
+                     family="monospace"), 26 - 2.2))
 arrow((11, 22.5), (11, 20.4), color=CTRL, ls=(0, (3, 2)))
 arrow((11, 20.4), (62, 20.4), color=CTRL, ls=(0, (3, 2)))
 arrow((88, 20.4), (97, 20.4), color=CTRL, ls=(0, (3, 2)))
@@ -149,6 +156,26 @@ ax.text(2, 0.4, "Dashed outline: implemented in the repository but not exercised
                 "in this evaluation (see Section on limitations).",
         fontsize=6.4, color=GREY, style="italic")
 
+def fit_labels():
+    """Shrink any label that is wider than the box holding it.
+
+    The box geometry is in data units and the labels are in points, so the
+    two scale differently with figsize; measuring and shrinking keeps the
+    diagram correct whatever width the figure is rendered at.
+    """
+    fig.canvas.draw()
+    r = fig.canvas.get_renderer()
+    x0 = ax.transData.transform((0, 0))[0]
+    for t, inner in FITS:
+        limit = abs(ax.transData.transform((inner, 0))[0] - x0)
+        while t.get_fontsize() > 3.2:
+            if t.get_window_extent(renderer=r).width <= limit:
+                break
+            t.set_fontsize(t.get_fontsize() - 0.2)
+
+
+fit_labels()
+
 fig.savefig(OUT / "fig_architecture.png", bbox_inches="tight",
-            facecolor="white", pad_inches=0.05, dpi=260)
+            facecolor="white", pad_inches=0.04, dpi=560)
 print("  fig_architecture.png")

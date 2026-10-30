@@ -123,13 +123,13 @@ const configTable = [
 
 // ---------------------------------------------------------- positioning table
 const positioning = [
-  H2('O. Positioning Against Prior Work'),
-  P('Table XVII places the present work against the reviewed systems on the three axes the '
+  H2('P. Positioning Against Prior Work'),
+  P('Table XVIII places the present work against the reviewed systems on the three axes the '
   + 'experiments address. The comparison is of mechanism, not of reported numbers: none of the '
   + 'systems in the table was reimplemented, their published results were obtained on different '
   + 'plants and workloads, and no numerical claim is made against them.'),
   mkTable(
-    ['Property', 'Threshold [1]', 'Forecast-driven [2,3,8,9]',
+    ['Property', 'Threshold [1]', 'Forecast-driven [2,3,8]',
      'Optimisation [4,5,6]', 'Hybrid [7,11]', 'This work'],
     [
       ['Decision variable is integer', 'yes', 'varies', 'no, rounded', 'varies', 'yes, solved exactly'],
@@ -142,14 +142,13 @@ const positioning = [
       ['Evaluated on real hardware', 'yes', 'varies', 'yes', 'yes', 'no, simulated plant'],
     ],
     [2500, 1700, 2100, 1800, 1500, 2100], { left: true, size: 12 }),
-  CAP('Table XVII. Mechanism comparison. Entries describe design choices reported by the cited '
+  CAP('Table XVIII. Mechanism comparison. Entries describe design choices reported by the cited '
   + 'work, not relative performance. The final row records the principal weakness of the present '
   + 'evaluation.'),
-  P('The table makes the contribution and its boundary explicit in the same view. The three columns '
-  + 'in which this work differs — exact integrality, horizon tied to measured delay, and churn as '
-  + 'both a penalty and a reported metric — are the three the experiments quantify. The final row '
-  + 'is the column in which it is weakest: every system in the comparison was evaluated on real '
-  + 'infrastructure and this one was not.'),
+  P('Three columns separate this work from the rest — exact integrality, a horizon tied to '
+  + 'measured delay, and churn treated as both a penalty and a reported metric — and those are '
+  + 'precisely the three the experiments quantify. The last row runs the other way: every other '
+  + 'system in the comparison was evaluated on real infrastructure, and this one was not.'),
 ];
 
 // ---------------------------------------------------------- discussion
@@ -170,7 +169,7 @@ const discussion = [
   + 'It holds at every cold-start setting tested, the transition lands where (6) predicts rather than '
   + 'at a fixed horizon, and the sign of the predictive controller’s advantage reverses across it. '
   + 'It also requires no tuning to exploit: the operator measures one latency and computes one '
-  + 'inequality. Section V-H strengthens it by showing that once the horizon is adequate, the '
+  + 'inequality. Section V-J strengthens it by showing that once the horizon is adequate, the '
   + 'controller is nearly insensitive to the delay itself over a factor of twelve.'),
   P('The integrality result is narrower but holds under both forecaster brackets. Exact and rounded '
   + 'controllers differ on a large and growing fraction of decisions, the difference materialises as '
@@ -204,17 +203,17 @@ const discussion = [
   P('Finally, the proposed controller did not dominate. It carries more capacity than the rounded '
   + `controller at matched settings (${f(po.over_mean, 1)} % against ${f(ro.over_mean, 1)} %) and issues more scaling actions than the `
   + `reactive baseline (${f(po.act_mean, 1)} against ${f(re.act_mean, 1)}). An operator whose workload resembles the slow families in `
-  + 'Table XIII, and who can tolerate the rounded controller’s violation rate, has no reason to prefer '
+  + 'Table XIV, and who can tolerate the rounded controller’s violation rate, has no reason to prefer '
   + 'exact solution on these results.'),
   H2('C. When Each Mechanism Is Worth Its Cost'),
   P('Synthesising across the experiments gives a decision rule that is narrower than a general '
   + 'recommendation but better supported than one. Exact integer solution is worth adopting when the '
   + 'pool is small relative to demand swings, when the target utilisation is aggressive, or when the '
-  + 'workload has fast transitions — the three conditions under which Table V, Table VI and Table XIII '
+  + 'workload has fast transitions — the three conditions under which Table V, Table VI and Table XIV '
   + 'respectively show the largest separation. It is not worth adopting on slowly varying traffic at '
   + 'conservative targets, where the measurements show no advantage and a capacity penalty.'),
   P('Predictive scaling in general is worth adopting when the actuation delay is long relative to the '
-  + 'control interval, which Section V-H quantifies, and only when the horizon can be configured to '
+  + 'control interval, which Section V-J quantifies, and only when the horizon can be configured to '
   + 'cover it. Where the delay is short — at τc = 5 s the reactive baseline violates on '
   + `${f(cliffRows[0].reactive, 2)} % of ticks against ${f(cliffRows[0].above, 2)} % predictive — the additional machinery buys little.`),
 ];
@@ -230,13 +229,13 @@ const pqBestR = E13.filter(r => r.method === 'rounded')
   .reduce((a, r) => (r.sla_mean < a.sla_mean ? r : a));
 
 const predictorQuality = [
-  H2('K. Response to Predictor Quality'),
+  H2('M. Response to Predictor Quality'),
   P('The bracketing protocol of Section IV-C bounds the predictor’s contribution but leaves the '
   + 'interior unmeasured, and a real forecaster lives in that interior. To fill it, a blended '
   + 'predictor was constructed that returns a convex combination of the two brackets, with weight w '
   + 'on perfect foresight and 1 − w on persistence. Sweeping w traces the controller’s response to '
-  + 'predictor quality without requiring any particular model to be trained. Table XV reports the '
-  + 'sweep and Fig. 16 shows it.'),
+  + 'predictor quality without requiring any particular model to be trained. Table XVI reports the '
+  + 'sweep and Fig. 17 shows it.'),
   mkTable(
     ['w', 'Exact MPC\nviolation (%)', 'Exact MPC\nover-prov. (%)', 'Exact MPC\nactions',
      'Rounded\nviolation (%)', 'Rounded\nover-prov. (%)', 'Rounded\nactions'],
@@ -246,14 +245,14 @@ const predictorQuality = [
       f(pq('rounded', w).sla_mean, 2), f(pq('rounded', w).over_mean, 1), f(pq('rounded', w).act_mean, 1),
     ]),
     [700, 1400, 1500, 1200, 1400, 1500, 1200], { left: false, size: 13 }),
-  CAP(`Table XV. Response to predictor quality. w = 0 is the persistence bracket and w = 1 the `
+  CAP(`Table XVI. Response to predictor quality. w = 0 is the persistence bracket and w = 1 the `
   + `perfect-foresight bracket. Synthetic traces, 5 families × 6 seeds = ${pq('pact', 0.0).n_runs} runs per cell.`),
   P('The response is not monotone, and that is the substantive finding. For the integer-exact '
   + `controller the violation rate falls from ${f(pq('pact', 0.0).sla_mean, 2)} % at pure persistence to a minimum of `
   + `${f(pqBest.sla_mean, 2)} % at w = ${pqBest.oracle_weight}, then rises again to ${f(pq('pact', 1.0).sla_mean, 2)} % at perfect foresight. The rounded controller shows `
   + `the same shape with its minimum at w = ${pqBestR.oracle_weight}. A perfectly accurate forecast is therefore not the best `
   + 'forecast for either controller on these workloads.'),
-  P('The mechanism is visible in the churn panel of Fig. 16. A perfect forecast reproduces every '
+  P('The mechanism is visible in the churn panel of Fig. 17. A perfect forecast reproduces every '
   + 'fluctuation in demand, including the noise, and the controller tracks it; actions rise from '
   + `${f(pqBest.act_mean, 1)} at the optimum to ${f(pq('pact', 1.0).act_mean, 1)} at w = 1. Blending in a persistence component low-pass filters the `
   + 'forecast, and the resulting slight lag behaves like a small damping term. The controller acts '
@@ -273,8 +272,8 @@ const predictorQuality = [
   + 'whose high-frequency content carries real demand, filtering it away would cost service level '
   + 'rather than save it. What the experiment establishes is that the relationship between forecast '
   + 'accuracy and control performance is not monotone, not the location of the optimum in general.'),
-  img('fig_predictor_quality.png', 3.35),
-  CAP('Fig. 16. Controller response to predictor quality. The violation-rate minimum for both '
+  img('fig_predictor_quality.png', 6.9),
+  CAP('Fig. 17. Controller response to predictor quality. The violation-rate minimum for both '
   + 'controllers lies strictly inside the bracket rather than at perfect foresight. Synthetic traces.'),
 ];
 

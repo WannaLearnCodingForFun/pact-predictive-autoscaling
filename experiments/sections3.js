@@ -118,8 +118,8 @@ const blockedN = E14.filter(r => r.cooldown_blocked === 'True' || r.cooldown_blo
 const meanErr = E14.reduce((s, r) => s + r.error_vs_required, 0) / E14.length;
 
 const inferenceTrace = [
-  H2('N. Decision Trace'),
-  P('Aggregate metrics describe behaviour but not mechanism. Table XVI reproduces sixteen '
+  H2('O. Decision Trace'),
+  P('Aggregate metrics describe behaviour but not mechanism. Table XVII reproduces sixteen '
   + 'consecutive control ticks from a single run, taken from the rise of the first burst on the '
   + 'burst trace, with every intermediate quantity the controller computes. It is included because '
   + 'the differences the aggregate tables report are visible here as individual decisions, and '
@@ -135,7 +135,7 @@ const inferenceTrace = [
       (r.error_vs_required > 0 ? '+' : '') + String(r.error_vs_required),
     ]),
     [550, 700, 750, 900, 750, 600, 700, 650, 650, 550, 950, 650], { left: false, size: 11 }),
-  CAP('Table XVI. Sixteen consecutive control ticks from the burst trace, seed 1001, oracle '
+  CAP('Table XVII. Sixteen consecutive control ticks from the burst trace, seed 1001, oracle '
   + 'predictor. The ground-truth column is the replica count the instantaneous arrival rate required '
   + 'at the target utilisation; it is computed after the fact and is not available to the controller. '
   + 'The excess column is N(t) minus that requirement.'),
@@ -151,19 +151,19 @@ const inferenceTrace = [
   + 'five consecutive ticks and the cooldown suppresses all five, because a scale-up occurred '
   + 'recently. The arrival rate then rises through tick 121, which retrospectively makes every one '
   + 'of those suppressed scale-downs the wrong action. This is the mechanism behind the sensitivity '
-  + 'result of Section V-F, where the cooldown dominated stability, seen at the level of the '
+  + 'result of Section V-G, where the cooldown dominated stability, seen at the level of the '
   + 'individual decisions it changes.'),
   P(`The excess column averages ${f(meanErr, 2)} replicas over the window, which is the over-provisioning the `
   + 'aggregate tables report expressed per tick. It is positive on almost every tick rather than '
   + 'alternating in sign, which identifies it as a systematic bias of the controller rather than '
   + 'tracking noise. The asymmetric tracking weight of (8) and the cooldown both push in that '
-  + 'direction, and Section V-F shows the cooldown is the larger contributor.'),
+  + 'direction, and Section V-G shows the cooldown is the larger contributor.'),
   P('One caveat applies to reading this table. The ground-truth column is derived from the '
   + 'instantaneous arrival rate, so it changes on nearly every tick, including by a single replica '
   + 'in response to noise. A controller that matched it exactly would be the oscillating controller '
   + 'the design is intended to avoid, and the excess column should be read as a measure of '
   + 'conservatism rather than of error. This is the same definitional caveat that applies to the '
-  + 'decision classification of Section V-J.'),
+  + 'decision classification of Section V-L.'),
 ];
 
 module.exports.inferenceTrace = inferenceTrace;
@@ -180,8 +180,8 @@ const validity = [
   + 'performs well on this construct would perform well on the real one only to the extent the '
   + 'approximation holds, which Section IV-C argues it does in the moderate-utilisation regime and '
   + 'does not near saturation, where the measure is censored.'),
-  P('The ground-truth replica requirement, used by both the decision classification of Section V-J '
-  + 'and the excess column of Table XVI, is computed from the instantaneous arrival rate. It '
+  P('The ground-truth replica requirement, used by both the decision classification of Section V-L '
+  + 'and the excess column of Table XVII, is computed from the instantaneous arrival rate. It '
   + 'therefore treats noise as demand and changes on nearly every tick. It is an adequate construct '
   + 'for measuring systematic bias, which is how this paper uses it, and an inadequate one for '
   + 'ranking controllers by decision quality, which is why the classification results are reported '

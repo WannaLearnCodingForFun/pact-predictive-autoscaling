@@ -11,8 +11,9 @@ const B = require('./build_paper.js');
 const SEC = require('./sections.js');
 const SEC2 = require('./sections2.js');
 const SEC3 = require('./sections3.js');
-const { P, RUNS, H1, H2, H3, CAP, BUL, EQ, sub, sup, img, mkTable,
-        E1, E2, E3, E4, E5, E6, E7, MAN, by, f, F } = B;
+const { P, RUNS, H1, H2, H3, CAP, BUL, EQI, sub, sup, img, mkTable,
+        E1, E2, E3, E4, E5, E6, E7, E15, MAN, by, f, F,
+        TEXT_W, COL_W, COL_GAP } = B;
 
 const ROOT = path.resolve(__dirname, '..');
 
@@ -95,13 +96,22 @@ const title = [
       + 'This paper examines both choices experimentally on a discrete-event pool simulator driven by five synthetic workload families. '
       + 'Because the learned forecaster could not be executed in the available environment, every controller is driven by two bracketing '
       + 'predictors — perfect foresight and persistence — so that controller effects are separated from predictor quality. '
-      + 'Two findings follow. First, the forecast horizon must cover the actuation dead time or prediction is actively harmful: '
+      + 'Three findings follow. First, the forecast horizon must cover the actuation dead time or prediction is actively harmful: '
       + `averaged over the ${cliffDrop.length} cold-start settings for which both sides of the boundary were sampled, violations fall from ${f(meanBelow)} % to ${f(meanAbove)} % as the horizon crosses `
       + `HΔt = τc, and below that threshold the predictive controller is up to ${f(Math.abs(worstNeg))} percentage points worse than a reactive baseline, `
-      + `while above it it is up to ${f(bestPos)} points better. Second, relaxing the integrality constraint is not free: the relaxed-and-rounded `
-      + `controller disagrees with the integer-exact solution on ${f(E3R[0].dis, 1)}–${f(E3R[4].dis, 1)} % of control ticks and, at an aggressive `
+      + `while above it it is up to ${f(bestPos)} points better. `
+      + 'Second, the integer problem can be solved to global optimality rather than approximated. The dead time '
+      + 'confines the tracking-relevant decisions to the first H − τ + 1 steps of the horizon and leaves the '
+      + 'remainder separable. '
+      + `This cuts the search from (2Δmax+1)^H to ${E15.paper_config.m} nested integer choices, and the resulting solver matched `
+      + `exhaustive enumeration in ${E15.validation.exact_attains_optimum} of ${E15.validation.cases} brute-forced plant states; completing the horizon greedily `
+      + `instead returned an optimal first action in only ${E15.validation.greedy_first_action_optimal} of them, and never a better one. `
+      + `Third, relaxing integrality is not free: the relaxed-and-rounded `
+      + `controller disagrees with the exact solution on ${f(E3R[0].dis, 1)}–${f(E3R[4].dis, 1)} % of control ticks and, at an aggressive `
       + `utilisation target of 0.85, reaches ${f(fr('rounded-oracle', 0.85).sla_mean, 2)} % violations against ${f(fr('pact-oracle', 0.85).sla_mean, 2)} % for the exact controller. `
-      + `Exact solution costs under ${f(solveMax, 2)} ms per tick. All reported values are measured; no result in this paper is estimated or illustrative.` }),
+      + `Exact solution costs at most ${f(solveMax, 1)} ms per tick in the mean and ${f(E15.paper_config.exact_max_ms, 1)} ms in the worst single solve observed, under ${f(E15.paper_config.exact_max_ms / 50.0, 2)} % of the control interval. `
+      + 'These results come from simulation with synthetic workloads and bracketing predictors, not from a '
+      + `deployed system; every value reported is measured, and none is estimated or illustrative.` }),
     ],
   }),
   new Paragraph({
@@ -135,7 +145,7 @@ body.push(P(
 
 body.push(H2('B. Research Gap'));
 body.push(P(
-  'Two gaps motivate this work, and both concern the controller rather than the predictor.'));
+  'Three gaps motivate this work, and all three concern the controller rather than the predictor.'));
 body.push(P(
   'The first is integrality. Published predictive auto-scalers that use constrained optimisation formulate the problem '
 + 'over real-valued decision variables and round the solution before applying it. The rounding step is reported as an '
@@ -144,7 +154,15 @@ body.push(P(
 + 'ones, an outcome the authors attribute to the mismatch introduced when continuous outputs are bucketed into integer '
 + 'replica changes. If that mismatch matters for a learned policy, it should also matter for a relaxed optimiser.'));
 body.push(P(
-  'The second is horizon selection. A predictive controller that looks one step ahead cannot compensate for an actuation '
+  'The second is tractability, and it is the reason the first gap has stayed open. Enforcing integrality on a '
++ 'receding-horizon problem appears to demand a search over (2Δmax + 1) raised to the power of the horizon length, '
++ 'which is why the usual response is either to relax the constraint or to enumerate the first action and complete '
++ 'the horizon with a heuristic. The second response is often described as exact on the grounds that only the first '
++ 'action is applied. That reasoning does not hold: the first action is chosen by comparing the costs of completed '
++ 'plans, so a biased completion biases the comparison. Whether an exact integer solve is affordable at '
++ 'container-scaling rates has not, as far as this survey found, been settled either way.'));
+body.push(P(
+  'The third is horizon selection. A predictive controller that looks one step ahead cannot compensate for an actuation '
 + 'delay of nine steps; its decisions arrive exactly as late as a reactive controller’s, with additional forecast error '
 + 'on top. The condition under which prediction becomes useful is simple to state and, as far as the present survey '
 + 'found, is not measured anywhere.'));
@@ -152,14 +170,22 @@ body.push(P(
 SEC2.workedExample.forEach(e => body.push(e));
 
 body.push(H2('C. Contributions'));
-body.push(P('This paper makes three contributions, each supported by measurements reported in Section V.'));
+body.push(P('This paper makes four contributions, each supported by measurements reported in Section V.'));
 body.push(BUL(
   'A measurement of the horizon–dead-time law. Sweeping the cold-start interval and the forecast horizon independently '
 + 'shows a sharp transition in service-level attainment that coincides with the condition HΔt ≥ τc. Below the transition '
 + 'the predictive controller is worse than a reactive baseline.'));
 body.push(BUL(
-  'A measurement of the cost of relaxation. An integer-exact controller is compared against an otherwise identical '
-+ 'relaxed-and-rounded controller across five pool sizes, isolating the effect of the integrality constraint alone.'));
+  'A tractable exact solve, with its structural argument and its verification. Because an action issued now does '
++ 'not reach the pool for τ ticks, only the first H − τ + 1 actions of the horizon can influence any tracking term '
++ 'inside it, and the remaining actions enter the cost through a separable chain minimised by backward recursion. '
++ 'Together these cut the search to a size that can be enumerated, and the resulting solver is checked against '
++ 'exhaustive enumeration rather than asserted to be correct.'));
+body.push(BUL(
+  'A measurement of the cost of relaxation, and of the cost of approximating the solve. The exact controller is '
++ 'compared against an otherwise identical relaxed-and-rounded controller across five pool sizes, isolating the '
++ 'effect of the integrality constraint alone, and separately against a solver that enumerates first actions under '
++ 'a greedy horizon completion, isolating the effect of solving the integer problem only approximately.'));
 body.push(BUL(
   'An evaluation protocol that separates controller effects from predictor quality by bracketing every controller between '
 + 'a perfect-foresight predictor and a persistence predictor, so that conclusions holding under both brackets are '
@@ -198,9 +224,9 @@ body.push(P(
 
 body.push(H2('C. Optimisation-Based and Control-Theoretic Scaling'));
 body.push(P(
-  'A smaller body of work treats scaling as a control problem. Baresi et al. (2018) combine vertical and horizontal '
+  'A smaller body of work treats scaling as a control problem. Incerto et al. (2018) combine vertical and horizontal '
 + 'scaling through model predictive control. Quattrocchi et al. (2024) estimate system state with a queueing network '
-+ 'and compute allocations at a one-second control interval. Zhang et al. (2024), in the OptScaler framework deployed at '
++ 'and compute allocations at a one-second control interval. Zou et al. (2024), in the OptScaler framework deployed at '
 + 'Alipay, couple a proactive forecaster and a reactive estimator into a single receding-horizon optimisation with a '
 + 'chance constraint, applying only the first step of each solution. Cai et al. (2025) pair a deep forecaster with a '
 + 'feedback control law so that the learned term supplies feedforward action while the feedback term corrects residual '
@@ -241,96 +267,55 @@ body.push(H2('A. Observation and Capacity Mapping'));
 body.push(P('At each tick the collector assembles the observation vector of (1), where u is mean CPU utilisation across '
 + 'the pool, r is the resident memory fraction, λ the request arrival rate, ℓ the 95th-percentile response time, and N '
 + 'the current replica count.'));
-body.push(EQ([new MathRun('m(t) = [ u(t), r(t), λ(t), ℓ(t), N(t) ]'), sup('', 'T')], 1));
+body.push(EQI(1));
 body.push(P('A forecast of utilisation is converted to a replica requirement through the utilisation law (2), in which '
 + 'u* is the target operating point, μ the per-replica service rate, and γ a safety margin. The ceiling is used because '
 + 'a fractional shortfall is a real shortfall.'));
-body.push(EQ([
-  new MathRun('Ñ(t+h) = ⌈ (1 + γ) · '),
-  new MathFraction({ numerator: [new MathRun('λ̂(t+h)')],
-                     denominator: [new MathRun('μ u*')] }),
-  new MathRun(' ⌉'),
-], 2));
+body.push(EQI(2));
 body.push(P('Memory imposes an independent bound, so the binding requirement is the larger of the two, as in (3).'));
-body.push(EQ([
-  new MathRun('Ñ(t+h) ← max{ '), sub('Ñ', 'CPU'),
-  new MathRun('(t+h), ⌈ r̂(t+h) N(t) / r* ⌉ }'),
-], 3));
+body.push(EQI(3));
 body.push(P('Expected tail latency at a candidate replica count is estimated by the heavy-traffic approximation (4), '
 + 'where s̄ is the mean service time and cₐ² and cₛ² are the squared coefficients of variation of the arrival and '
 + 'service processes. It is used as a feasibility test: candidates whose predicted latency exceeds the objective are '
 + 'rejected before the optimisation runs.'));
-body.push(EQ([
-  new MathRun('ℓ̂ = s̄ + '),
-  new MathFraction({ numerator: [sub('c', 'a'), new MathRun('² + '), sub('c', 's'), new MathRun('²')],
-                     denominator: [new MathRun('2')] }),
-  new MathFraction({ numerator: [new MathRun('ρ')],
-                     denominator: [new MathRun('1 − ρ')] }),
-  new MathRun(' s̄, ρ = λ̂ / (Nμ)'),
-], 4));
+body.push(EQI(4));
 
 body.push(H2('B. Plant Model and Dead Time'));
 body.push(P('The pool evolves according to (5): the replica count changes by the control input applied τ ticks earlier, '
 + 'where τ is the cold-start interval expressed in control ticks. This delay term is what forces the controller to act '
 + 'before demand arrives rather than when it arrives.'));
-body.push(EQ([
-  new MathRun('N(t+1) = N(t) + u(t − τ), τ = ⌈ '), sub('τ', 'c'),
-  new MathRun(' / Δt ⌉, u ∈ ℤ'),
-], 5));
+body.push(EQI(5));
 body.push(P('For the forecast to be actionable it must reach at least τ ticks into the future, which gives the '
 + 'feasibility condition (6). Section V measures the behaviour of the closed loop on both sides of this inequality; '
 + 'it is the paper’s central design rule and the subject of its first result.'));
-body.push(EQ([
-  new MathRun('H Δt ≥ '), sub('τ', 'c'), new MathRun(' + '), sub('Δt', 'ctrl'),
-], 6));
+body.push(EQI(6));
 
 body.push(H2('C. Receding-Horizon Objective'));
 body.push(P('The applied action minimises (7) over the horizon. The three terms penalise, in order, deviation from the '
 + 'requirement, the magnitude of the action, and change in the action between consecutive steps. The third term is what '
 + 'suppresses the alternating scale-up and scale-down behaviour that threshold auto-scalers exhibit under bursty load.'));
-body.push(EQ([
-  new MathRun('J(u) = '),
-  new MathSum({
-    children: [
-      new MathRun('[ '), sub('q', 'h'),
-      new MathRun('( N(t+h) − Ñ(t+h) )² + r u(t+h−1)² + s ( u(t+h−1) − u(t+h−2) )² ]'),
-    ],
-    subScript: [new MathRun('h=1')], superScript: [new MathRun('H')],
-  }),
-], 7));
+body.push(EQI(7));
 body.push(P('The tracking weight is asymmetric, as in (8): being short of the requirement is penalised more heavily than '
 + 'being over it, because a dropped request costs more than an idle replica-second.'));
-body.push(EQ([
-  sub('q', 'h'), new MathRun(' = '), sup('q', '+'),
-  new MathRun(' if N(t+h) < Ñ(t+h), else '), sup('q', '−'),
-  new MathRun(', '), sup('q', '+'), new MathRun(' ≫ '), sup('q', '−'),
-], 8));
+body.push(EQI(8));
 body.push(P('The optimisation is subject to (9): the pool is bounded, the per-tick change is rate limited, and the '
 + 'decision is an integer. The last of these is the constraint that related work relaxes.'));
-body.push(EQ([
-  sub('N', 'min'), new MathRun(' ≤ N(t+h) ≤ '), sub('N', 'max'),
-  new MathRun(', | u | ≤ '), sub('Δ', 'max'), new MathRun(', u ∈ ℤ'),
-], 9));
-body.push(P('Because the horizon is short and the action set is a bounded integer interval, the exact problem is solved '
-+ 'by enumeration over the admissible first actions rather than by relaxation. Section V reports the cost of this choice '
-+ `in both directions: the solve time, which stays below ${f(solveMax, 2)} ms per tick, and the decisions it changes.`));
+body.push(EQI(9));
+body.push(P('The integer constraint is kept rather than relaxed. Section III-E shows that the actuation dead time '
++ 'confines the decisions that can affect the horizon to its first few steps and renders the remainder separable, which '
++ 'is what makes an exact solve affordable here. Section V reports the cost of this choice '
++ `in both directions: the solve time, which stays below ${f(E15.paper_config.exact_max_ms, 1)} ms per tick, and the decisions it changes.`));
 body.push(P('Only the first element of the optimal sequence is applied and the problem is re-solved at the next tick. '
 + 'A deadband and a cooldown then gate the result, as in (10); the gates can suppress an action but never create one, '
 + 'and they are applied after the feasibility projections so that they cannot be defeated by an unusual forecast.'));
-body.push(EQ([
-  sub('u', 'applied'), new MathRun('(t) = u*(t) if | u*(t) | ≥ θ and t − '),
-  sub('t', 'up'), new MathRun(' ≥ '), sub('T', 'cool'), new MathRun(', else 0'),
-], 10));
+body.push(EQI(10));
 
 body.push(H2('D. Margin Adaptation and Safety Ceiling'));
 body.push(P('A drift monitor compares the replica count the observed load actually required against the count predicted '
 + 'τ ticks earlier and adapts the margin by the clipped integral update (11). A separate ceiling bypasses the optimiser '
 + 'and every gate when observed utilisation exceeds an emergency threshold, so that an unprecedented burst is not held '
 + 'back by the deadband. Section V reports that neither mechanism was active under the conditions tested.'));
-body.push(EQ([
-  new MathRun('γ(t+1) = clip( γ(t) + '), sub('κ', 'γ'),
-  new MathRun(' ē(t), '), sub('γ', 'min'), new MathRun(', '), sub('γ', 'max'), new MathRun(' )'),
-], 11));
+body.push(EQI(11));
 
 // ===== IV. Setup
 SEC.algos.forEach(e => body.push(e));
@@ -422,7 +407,7 @@ body.push(P(
 body.push(P(
   'The transition is sharp and it coincides with the predicted boundary. For every cold-start setting tested, violation '
 + 'rate is flat and elevated while the horizon is too short, then falls abruptly at the first horizon satisfying '
-+ `HΔt ≥ τc, and is flat and low thereafter. Averaged over the six settings, the rate falls from ${f(meanBelow)} % below `
++ `HΔt ≥ τc, and is flat and low thereafter. The grid covers six cold-start values, but at the shortest of them every horizon tested already satisfies the bound, so that setting yields no below-boundary measurement and is excluded from the average. Over the remaining ${cliffDrop.length}, which bracket the boundary on both sides, the rate falls from ${f(meanBelow)} % below `
 + `the boundary to ${f(meanAbove)} % above it. The effect is monotone in τc: at τc = ${cliff[0].tau} s the controller is already `
 + `near its floor at the shortest horizon tested, whereas at τc = ${cliff[cliff.length - 1].tau} s it remains at `
 + `${f(cliff[cliff.length - 1].belowMean)} % until the horizon reaches ${cliff[cliff.length - 1].firstH} ticks.`));
@@ -432,11 +417,11 @@ body.push(P(
 + `than reacting; it is worse, by up to ${f(Math.abs(worstNeg))} percentage points. Once the horizon covers the dead time it is better, by up `
 + `to ${f(bestPos)} points. A predictive auto-scaler configured with an under-sized horizon therefore pays the cost of forecasting `
 + 'and receives none of the benefit, and the sign of its advantage is determined by a condition that is cheap to check '
-+ 'at configuration time. This is the clearest result in the paper and it is the one with the most direct practical use.'));
++ 'at configuration time. What makes the condition useful is that it can be checked before deployment: it compares the configured horizon against the measured ready-time of the image, and needs no model of the workload.'));
 body.push(img('fig_horizon_law.png', 3.35));
 body.push(CAP('Fig. 2. Violation rate over the cold-start × horizon grid for the proposed controller. The solid line is '
 + 'the boundary HΔt = τc from (6). Synthetic traces; mean of three families × three seeds per cell.'));
-body.push(img('fig_horizon_cliff.png', 3.3));
+body.push(img('fig_horizon_cliff.png', 3.35));
 body.push(CAP('Fig. 3. The same data as violation against lookahead. Dotted verticals mark τc for each curve. '
 + 'Synthetic traces.'));
 SEC2.cliffTable.forEach(e => body.push(e));
@@ -465,7 +450,7 @@ body.push(P(
 + 'tested, which is three orders of magnitude inside the 5 s control interval. On this evidence the integrality '
 + 'constraint should not be relaxed for performance reasons at these problem sizes, because there is no performance '
 + 'reason to relax it.'));
-body.push(img('fig_rounding_gap.png', 6.6));
+body.push(img('fig_rounding_gap.png', 6.9));
 body.push(CAP('Fig. 4. Disagreement between the exact and rounded controllers, and the resulting actuation churn. '
 + 'Synthetic traces.'));
 
@@ -494,7 +479,7 @@ body.push(P(
 + 'its limit, a rounding error of one replica is a large fraction of the available headroom, and the rounded controller '
 + 'spends an increasing share of its time on the wrong side of the requirement.'));
 body.push(P(
-  'The honest reading of this experiment is that neither controller dominates. The exact controller buys service level '
+  'Neither controller dominates. The exact controller buys service level '
 + `with capacity: at u* = 0.65 it carries ${f(fr('pact-oracle', 0.65).over_mean, 1)} % excess against the rounded controller’s `
 + `${f(fr('rounded-oracle', 0.65).over_mean, 1)} %, for a violation rate of ${f(fr('pact-oracle', 0.65).sla_mean, 2)} % against `
 + `${f(fr('rounded-oracle', 0.65).sla_mean, 2)} %. An operator who can tolerate the violation rate of the rounded controller should prefer it on cost. `
@@ -558,11 +543,11 @@ body.push(P(
 + 'forecaster would land inside an interval of roughly a quarter of a percentage point in violation rate. The ordering '
 + 'of methods is unchanged under both brackets, which is the condition under which the comparison is attributed to the '
 + 'control law.'));
-body.push(img('fig_trace.png', 6.6));
+body.push(img('fig_trace.png', 6.9));
 body.push(CAP('Fig. 6. Replica count and tail latency on one burst trace. The rounded controller overshoots at each '
 + 'burst and the reactive controller holds capacity long after demand falls. Synthetic burst trace, seed 1001, oracle '
 + 'predictor.'));
-body.push(img('fig_main_comparison.png', 6.6));
+body.push(img('fig_main_comparison.png', 6.9));
 body.push(CAP(`Fig. 7. Main comparison with 95 % bootstrap intervals. Synthetic traces, ${po.n_runs} runs per bar.`));
 
 body.push(H2('E. Ablation'));
@@ -602,7 +587,7 @@ body.push(mkTable(
 body.push(CAP(`Table IX. Ablation. Full controller: violation ${f(abl('full').sla_mean, 2)} %, over-provisioning `
 + `${f(abl('full').over_mean, 1)} %, churn ${f(abl('full').act_mean, 1)}. Synthetic traces, ${abl('full').n_runs} runs per row, oracle predictor. `
 + 'No service-level delta reaches p < 0.05.'));
-body.push(img('fig_ablation.png', 6.6));
+body.push(img('fig_ablation.png', 6.9));
 body.push(CAP('Fig. 8. Effect of disabling each component. Synthetic traces.'));
 
 body.push(H2('F. Robustness to Forecast Corruption'));
@@ -628,19 +613,17 @@ body.push(CAP('Fig. 9. Violation rate against forecast corruption, with and wi
 + 'traces, three families × four seeds per point.'));
 
 // ===== VI. Limitations
-SEC.sensitivity.forEach(e => body.push(e));
-SEC.solvetime.forEach(e => body.push(e));
-SEC.coldstart.forEach(e => body.push(e));
-SEC.perWorkload.forEach(e => body.push(e));
-SEC.decisions.forEach(e => body.push(e));
-SEC2.predictorQuality.forEach(e => body.push(e));
-SEC.guidance.forEach(e => body.push(e));
-SEC3.inferenceTrace.forEach(e => body.push(e));
-SEC2.positioning.forEach(e => body.push(e));
-SEC2.discussion.forEach(e => body.push(e));
-SEC3.inferenceTrace.forEach(e => body.push(e));
-SEC2.positioning.forEach(e => body.push(e));
-SEC2.discussion.forEach(e => body.push(e));
+SEC.sensitivity.forEach(e => body.push(e));        // V-G
+SEC.solvetime.forEach(e => body.push(e));          // V-H
+SEC.exactGap.forEach(e => body.push(e));           // V-I
+SEC.coldstart.forEach(e => body.push(e));          // V-J
+SEC.perWorkload.forEach(e => body.push(e));        // V-K
+SEC.decisions.forEach(e => body.push(e));          // V-L
+SEC2.predictorQuality.forEach(e => body.push(e));  // V-M
+SEC.guidance.forEach(e => body.push(e));           // V-N
+SEC3.inferenceTrace.forEach(e => body.push(e));    // V-O
+SEC2.positioning.forEach(e => body.push(e));       // V-P
+SEC2.discussion.forEach(e => body.push(e));        // VI
 
 body.push(H1('VII. Limitations and Threats to Validity'));
 SEC3.validity.forEach(e => body.push(e));
@@ -682,19 +665,34 @@ body.push(RUNS([{ t: 'Baseline fidelity. ', b: true }, { t:
 // ===== VII. Conclusion
 body.push(H1('VIII. Conclusion'));
 body.push(P(
-  'Two properties of predictive container auto-scaling were measured on a simulated pool, with the predictor held at two '
-+ 'extremes so that the control law was the only variable.'));
+  'Three properties of predictive container auto-scaling were measured on a simulated pool, with the predictor held '
++ 'at two extremes so that the control law was the only variable. They differ in how firmly they are established, '
++ 'and the distinction is worth keeping.'));
 body.push(P(
   `The forecast horizon must cover the actuation dead time. Across the ${cliffDrop.length} cold-start settings sampling both sides of the boundary, the violation rate fell from `
 + `${f(meanBelow)} % to ${f(meanAbove)} % as the horizon crossed HΔt = τc, and below that boundary the predictive controller performed `
 + `worse than a reactive baseline by up to ${f(Math.abs(worstNeg))} percentage points. Horizon selection is therefore not a tuning preference `
-+ 'but a feasibility condition, and it can be checked before deployment from a single measurement of cold-start latency.'));
++ 'but a feasibility condition, and it can be checked before deployment from a single measurement of cold-start '
++ 'latency. This is the firmest of the three results: the transition appeared at every cold-start setting tested and '
++ 'landed where the inequality predicts rather than at a fixed horizon.'));
+body.push(P(
+  'The integer problem does not have to be approximated. Dead time confines the tracking-relevant decisions to the '
++ `first H − τ + 1 steps of the horizon and leaves the rest separable, which reduced the search to ${E15.paper_config.m} nested integer `
++ `choices at the configuration used here. The solver built on that reduction reproduced the brute-force optimum in all ${E15.validation.cases} `
++ 'states small enough to enumerate exhaustively, which is a verification rather than a proof but a stronger warrant '
++ 'than the argument it replaces. Completing the horizon greedily instead, a device sometimes called exact on the '
++ `grounds that only the first action is applied, returned an optimal first action in only ${E15.validation.greedy_first_action_optimal} of those `
++ `${E15.validation.cases} states, and at the paper configuration differed from the optimum on ${f(100.0 - E15.paper_config.agree_pct, 2)} % of the plant states drawn, `
++ 'always in the direction of higher cost.'));
 body.push(P(
   `Relaxing the integrality of the scaling decision changes behaviour measurably. The relaxed controller disagreed with `
 + `the exact one on ${f(E3R[0].dis, 1)} to ${f(E3R[4].dis, 1)} % of control ticks, issued up to ${(E3R[4].ra / E3R[4].ea).toFixed(1)} times as many scaling actions, and `
 + `degraded from ${f(fr('rounded-oracle', 0.50).sla_mean, 2)} % to ${f(fr('rounded-oracle', 0.85).sla_mean, 2)} % violations as the utilisation target was raised, against `
-+ `${f(fr('pact-oracle', 0.50).sla_mean, 2)} % to ${f(fr('pact-oracle', 0.85).sla_mean, 2)} % for the exact controller. Since exact solution cost under `
-+ `${f(solveMax, 2)} ms per tick, the relaxation has no performance justification at these problem sizes.`));
++ `${f(fr('pact-oracle', 0.50).sla_mean, 2)} % to ${f(fr('pact-oracle', 0.85).sla_mean, 2)} % for the exact controller. Exact solution cost at most `
++ `${f(solveMax, 2)} ms per tick, ${f(solveMax / 50.0, 2)} % of the control interval, so relaxation buys compute that is not scarce `
++ 'at these problem sizes. That is a claim about this configuration rather than a general one: the exact solve is '
++ 'cheap here because the dead time is long relative to the horizon, and a pool with near-instant start-up and a '
++ 'long horizon would not enjoy the same reduction.'));
 body.push(P(
   'The results also qualify the approach. At the default operating point the exact controller did not significantly '
 + 'reduce violations relative to either the rounded or the reactive baseline, and it carried more capacity than the '
@@ -710,17 +708,15 @@ body.push(P(
 // ===== References
 body.push(H1('References'));
 const refs = [
-  'T. Van Do et al., "Properties of horizontal pod autoscaling algorithms and application for scaling cloud-native network functions," 2025.',
-  'B. Jeong and Y.-S. Jeong, "ARAScaler: Adaptive resource autoscaling scheme using ETimeMixer for efficient cloud-native computing," IEEE Trans. Services Computing, vol. 18, no. 1, pp. 72–84, 2025.',
-  'J. W. Fog, J. J. T. Møller, T. M. Jensen, D. Taibi, and M. Albano, "Comparing neural and statistical time-series models for proactive auto-scaling in Kubernetes," in Proc. IEEE SOSE, 2025, pp. 151–161.',
-  'L. Baresi, S. Guinea, A. Leva, and G. Quattrocchi, "Combined vertical and horizontal autoscaling through model predictive control," in Proc. Euro-Par, 2018, pp. 147–159.',
-  'G. Quattrocchi, E. Incerto, R. Pinciroli, C. Trubiani, and L. Baresi, "Autoscaling solutions for cloud applications under dynamic workloads," IEEE Trans. Services Computing, vol. 17, no. 3, pp. 804–820, 2024.',
-  'D. Zhang et al., "OptScaler: A collaborative framework for robust autoscaling in the cloud," Proc. VLDB Endowment, vol. 17, no. 12, pp. 4090–4103, 2024.',
-  'Z. Cai, H. Wu, X. Jiang, X. Li, and R. Buyya, "Deep learning and feedback control based container auto-scaling for cloud native microservices," IEEE Trans. Services Computing, 2025.',
-  'F. Meng, H. Dai, G. Cong, B. Zhu, and H. Zhao, "CATScaler: A convolution-augmented transformer scaling framework for cloud-native applications," IEEE Trans. Services Computing, vol. 18, no. 5, pp. 2659–2672, 2025.',
-  'Y. Ding, C. Li, Z. Cai, X. Wang, and B. Yang, "A dynamic interval auto-scaling optimization method based on Informer time series prediction," IEEE Access, vol. 13, pp. 14572–14583, 2025.',
-  'Z. Fang, H. Ma, G. Chen, and R. Buyya, "HGraphScale: Hierarchical graph learning for autoscaling microservice applications in container-based cloud computing," IEEE Trans. Services Computing, vol. 19, no. 1, pp. 410–422, 2026.',
-  'P. Habibi, S. Rawat, and A. Leon-Garcia, "AgileSphere: Predictive-reactive Kubernetes cluster autoscaling with warm-pool node promotion," IEEE Access, vol. 14, pp. 129559–129579, 2026.',
+  'T. Van Do et al., "Properties of horizontal pod autoscaling algorithms and application for scaling cloud-native network functions," preprint, 2025.',
+  'B. Jeong and Y.-S. Jeong, "ARAScaler: Adaptive resource autoscaling scheme using ETimeMixer for efficient cloud-native computing," IEEE Trans. Services Computing, vol. 18, no. 1, pp. 72–84, 2025, doi: 10.1109/TSC.2024.3522815.',
+  'J. W. Fog, J. J. T. Møller, T. M. Jensen, D. Taibi, and M. Albano, "Comparing neural and statistical time-series models for proactive auto-scaling in Kubernetes," in Proc. IEEE Int. Conf. Service-Oriented System Engineering (SOSE), 2025, pp. 151–161, doi: 10.1109/SOSE67019.2025.00022.',
+  'E. Incerto, M. Tribastone, and C. Trubiani, "Combined vertical and horizontal autoscaling through model predictive control," in Euro-Par 2018: Parallel Processing, Lecture Notes in Computer Science, vol. 11014, Springer, 2018, pp. 147–159, doi: 10.1007/978-3-319-96983-1_11.',
+  'G. Quattrocchi, E. Incerto, R. Pinciroli, C. Trubiani, and L. Baresi, "Autoscaling solutions for cloud applications under dynamic workloads," IEEE Trans. Services Computing, vol. 17, no. 3, pp. 804–820, 2024, doi: 10.1109/TSC.2024.3354062.',
+  'D. Zou, W. Lu, Z. Zhu, X. Lu, J. Zhou, X. Wang, K. Liu, K. Wang, R. Sun, and H. Wang, "OptScaler: A collaborative framework for robust autoscaling in the cloud," Proc. VLDB Endowment, vol. 17, no. 12, pp. 4090–4103, 2024, doi: 10.14778/3685800.3685829.',
+  'Z. Cai et al., "Deep learning and feedback control based container auto-scaling for cloud native microservices," IEEE Trans. Services Computing, 2025.',
+  'F. Meng et al., "CATScaler: A convolution-augmented transformer scaling framework for cloud-native applications," IEEE Trans. Services Computing, 2025.',
+  'Z. Fang, H. Ma, G. Chen, and R. Buyya, "HGraphScale: Hierarchical graph learning for autoscaling microservice applications in container-based cloud computing," IEEE Trans. Services Computing, 2025.',
   'B. Kumar, A. Verma, and R. Buyya, "Predictive autoscaling in cloud-native and federated cloud-edge computing environments: A taxonomy and future directions," arXiv:2606.07046, 2026.',
 ];
 refs.forEach((r, i) => body.push(new Paragraph({
@@ -750,6 +746,70 @@ const foot = new Footer({
   })],
 });
 
+// Split the flat body into sections so that anything too wide for a body
+// column (tables of four or more columns, full-width figures) is emitted in
+// a one-column continuous section spanning the text block, with its caption
+// carried alongside it. Everything else stays in two-column flow.
+const TWO_COL = { type: SectionType.CONTINUOUS, page: PAGE,
+                  column: { count: 2, space: COL_GAP, equalWidth: true } };
+const ONE_COL = { type: SectionType.CONTINUOUS, page: PAGE,
+                  column: { count: 1 } };
+
+// Inside a two-column section the columns are balanced, and balancing is
+// free to put a figure in one column and its caption in the other. Binding
+// each in-column figure to its caption in one unbreakable block prevents it.
+function bindFigures(flow) {
+  const out = [];
+  for (let i = 0; i < flow.length; i += 1) {
+    const el = flow[i];
+    if (el && el.__img && flow[i + 1] && flow[i + 1].__cap) {
+      const group = [el, flow[i + 1]];
+      i += 1;
+      while (flow[i + 1] && flow[i + 1].__cap) { group.push(flow[i + 1]); i += 1; }
+      out.push(B.atomic(group, COL_W));
+    } else {
+      out.push(el);
+    }
+  }
+  return out;
+}
+
+function layout(elements) {
+  const out = [];
+  let flow = [];
+  const flush = () => {
+    if (flow.length) {
+      out.push({ properties: TWO_COL, footers: { default: foot },
+                 children: bindFigures(flow) });
+      flow = [];
+    }
+  };
+  for (let i = 0; i < elements.length; i += 1) {
+    const el = elements[i];
+    if (el && el.__spans) {
+      const group = [el];
+      // A caption immediately before belongs with this block only if it is
+      // not already the caption of a preceding figure -- otherwise a wide
+      // table steals the caption of the figure above it.
+      const prev = flow[flow.length - 1];
+      const prev2 = flow[flow.length - 2];
+      if (prev && prev.__cap && !(prev2 && prev2.__img)) {
+        group.unshift(flow.pop());
+      }
+      while (i + 1 < elements.length && elements[i + 1] && elements[i + 1].__cap) {
+        group.push(elements[i + 1]);
+        i += 1;
+      }
+      flush();
+      out.push({ properties: ONE_COL, footers: { default: foot }, children: group });
+    } else {
+      flow.push(el);
+    }
+  }
+  flush();
+  return out;
+}
+
 const doc = new Document({
   numbering: { config: [{
     reference: 'b',
@@ -762,15 +822,9 @@ const doc = new Document({
   sections: [
     { properties: { page: PAGE, column: { count: 1 } },
       footers: { default: foot }, children: title },
-    { properties: { type: SectionType.CONTINUOUS, page: PAGE,
-                    column: { count: 2, space: 400, equalWidth: true } },
-      footers: { default: foot }, children: body.slice(0, SPLIT) },
-    { properties: { type: SectionType.CONTINUOUS, page: PAGE,
-                    column: { count: 1 } },
-      footers: { default: foot }, children: archWide },
-    { properties: { type: SectionType.CONTINUOUS, page: PAGE,
-                    column: { count: 2, space: 400, equalWidth: true } },
-      footers: { default: foot }, children: body.slice(SPLIT) },
+    ...layout(body.slice(0, SPLIT)),
+    { properties: ONE_COL, footers: { default: foot }, children: archWide },
+    ...layout(body.slice(SPLIT)),
   ],
 });
 

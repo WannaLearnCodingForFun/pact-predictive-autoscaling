@@ -20,7 +20,7 @@ def _write_cold_start(path: Path, mean_s: float) -> None:
 
 def _delete_cold_start(path: Path) -> None:
     if path.exists():
-        path.unlink():
+        path.unlink()
 
 
 def test_config_hash_is_sha256_of_config_and_cold_start(tmp_path: Path) -> None:

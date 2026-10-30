@@ -205,12 +205,14 @@ def e5_horizon() -> None:
         for H in (1, 2, 4, 6, 8, 12, 16, 20, 24, 30):
             cfg = base_config(tau_c_s=tau_c, horizon=H)
             tau_ticks = tau_c / cfg.telemetry.dt
-            sla_p, sla_r = [], []
+            sla_p, sla_r, exact = [], [], []
             for wl in ("burst", "step", "ramp"):
                 for seed in range(3):
                     lam = workload(wl, N_TICKS, 4000 + seed)
-                    sla_p.append(summarise(run_controller(
-                        method="pact", lam=lam, cfg=cfg, forecaster_kind="oracle"), cfg)["sla_violation_pct"])
+                    sp = summarise(run_controller(
+                        method="pact", lam=lam, cfg=cfg, forecaster_kind="oracle"), cfg)
+                    sla_p.append(sp["sla_violation_pct"])
+                    exact.append(sp["exact_solver"])
                     sla_r.append(summarise(run_controller(
                         method="reactive", lam=lam, cfg=cfg, forecaster_kind="oracle"), cfg)["sla_violation_pct"])
             p, r = float(np.mean(sla_p)), float(np.mean(sla_r))
@@ -219,6 +221,7 @@ def e5_horizon() -> None:
                          "covers_coldstart": bool(H * cfg.telemetry.dt >= tau_c),
                          "pact_sla": round(p, 4), "reactive_sla": round(r, 4),
                          "improvement_pp": round(r - p, 4),
+                         "exact_frac": round(float(np.mean(exact)), 4),
                          "n_runs": len(sla_p)})
     _csv(RESULTS / "e5_horizon_law.csv", rows)
 
@@ -299,11 +302,22 @@ def manifest() -> None:
         "n_seeds": N_SEEDS,
         "workloads": list(WORKLOADS),
         "plant": "pact.sim.queue_model.PoolSimulator (analytical, Kingman p95)",
+        "mpc_solver": (
+            "pact.control.mpc_exact.solve_mpc_exact -- globally optimal integer "
+            "solve, validated against exhaustive enumeration in "
+            "tests/test_mpc_exact.py and experiments/verify_exact.py"
+        ),
+        "superseded_solver": (
+            "pact.control.mpc.solve_mpc enumerates first actions but completes "
+            "the horizon greedily, so its first action is not globally optimal; "
+            "it is retained only as the comparison arm of e15"
+        ),
         "executed": [
             "e1_runs.csv", "e1_summary.csv", "e2_significance.csv",
             "e3_rounding_gap.csv", "e4_ablation_runs.csv",
             "e4_ablation_summary.csv", "e5_horizon_law.csv",
             "e6_frontier.csv", "e7_robustness.csv",
+            "e15_exact_vs_greedy.json", "e15_validation.json",
         ],
         "not_executed": {
             "TCN forecaster training/inference": "torch unavailable and uninstallable (no package-index access)",
@@ -311,7 +325,7 @@ def manifest() -> None:
             "ARIMA baseline": "statsmodels unavailable",
             "Docker testbed and measured cold start": "no Docker daemon in this environment",
             "WorldCup98 / Bitbrains traces": "no network access to fetch the archives",
-            "pytest suite": "pytest unavailable; modules verified by direct import and execution",
+            "pytest suite": "pytest unavailable; run with experiments/run_tests.py, a minimal runner that executes fixture-free test functions",
         },
         "forecaster_substitution": (
             "The learned forecaster could not be run. Every controller is instead "

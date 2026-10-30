@@ -1,0 +1,8 @@
+{
+  "cases": 400,
+  "exact_attains_optimum": 400,
+  "greedy_first_action_optimal": 354,
+  "greedy_excess_mean": 7.968375000000001,
+  "greedy_excess_max": 192.80000000000007,
+  "failures": 0
+}
