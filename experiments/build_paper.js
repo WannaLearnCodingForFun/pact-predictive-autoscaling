@@ -49,6 +49,7 @@ const E11 = csv('e11_decisions.csv');
 const E12 = csv('e12_coldstart.csv');
 const MAN = JSON.parse(fs.readFileSync(path.join(RES, 'manifest.json'), 'utf8'));
 const E15 = JSON.parse(fs.readFileSync(path.join(RES, 'e15_exact_vs_greedy.json'), 'utf8'));
+const E8C = csv('e8_solver_compare.csv');
 const E15T = csv('e15_ticks.csv');
 // Fraction of the horizon sweep solved exactly (the rest fell back; see the
 // tractability guard in pact/control/mpc_exact.py). Older result files have
@@ -347,5 +348,5 @@ module.exports = {
   ALGO, atomic,
   d, P, RUNS, H1, H2, H3, CAP, BUL, EQ, EQI, M, MathRun, MathFraction, MathSum,
   MathRadical, sub, sup, img, mkTable, csv, E1, E2, E3, E4, E5, E6, E7, E8,
-  E9, E10, E11, E12, E15, E15T, E5X, MAN, by, f, F, TEXT_W, COL_W, COL_GAP, fitW,
+  E9, E10, E11, E12, E15, E15T, E5X, E8C, MAN, by, f, F, TEXT_W, COL_W, COL_GAP, fitW,
 };

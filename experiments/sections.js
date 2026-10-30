@@ -5,7 +5,7 @@ const d = require('docx');
 const { Paragraph, TextRun, AlignmentType } = d;
 const B = require('./build_paper.js');
 const { P, RUNS, H2, H3, CAP, BUL, img, mkTable, ALGO,
-        E8, E9, E10, E11, E12, E15, E15T, E5X, MAN, f } = B;
+        E8, E9, E10, E11, E12, E15, E15T, E5X, E8C, MAN, f } = B;
 
 const sel = (rows, k, v) => rows.filter(r => r[k] === v);
 const one = (rows, pred) => rows.find(pred);
@@ -452,6 +452,11 @@ const guidance = [
 
 // ============================================================ V-I exact vs greedy
 const G15 = E15.paper_config;
+const gcAt = v => E8C.find(r => Math.abs(r.value - v) < 1e-9);
+const gc0 = gcAt(0.0);
+const gc1 = gcAt(1.0);
+const gcw = E8C.reduce((a, b) =>
+  Math.abs(b.greedy_sla - b.exact_sla) > Math.abs(a.greedy_sla - a.exact_sla) ? b : a);
 // disagreement by exact action, computed from the per-tick record
 const byU = {};
 E15T.forEach(r => {
@@ -525,6 +530,20 @@ const exactGap = [
   + 'cases the approximation gets wrong are therefore the ordinary ones, not the extreme ones. '
   + 'Fig. 13(b) shows the excess is one-sided, and Fig. 13(c) the two solve-time distributions '
   + 'against the control interval.'),
+  P('One consequence reaches past the solver and into how the controller is tuned. The '
+  + 'control-parameter sweep of Section V-G was run once under each solver, with the same '
+  + 'workloads, the same seeds and the same configuration, so the pair isolates what approximating '
+  + 'the solve does to a tuning conclusion. Under the greedy completion, raising the churn weight '
+  + `to unity drove the violation rate to ${f(gc1.greedy_sla, 3)} % and held it there across every larger value `
+  + `tested. Under Algorithm 2 the same sweep sits near ${f(gc1.exact_sla, 2)} %, and the largest divergence over `
+  + `the sweep is ${f(gcw.greedy_sla, 3)} % against ${f(gcw.exact_sla, 2)} % at s = ${gcw.value}.`),
+  P('The qualitative reading of that sweep is unchanged: raising s still improves service level, '
+  + `capacity and oscillation together, from ${f(gc0.exact_over, 1)} % over-provisioning and ${f(gc0.exact_osc, 1)} oscillations at `
+  + `s = 0 to ${f(gc1.exact_over, 1)} % and ${f(gc1.exact_osc, 1)} at s = 1. What was not a property of the controller is the size `
+  + 'of the effect. The mechanism is the one Section III-E sets out: greedy completion zeroes the '
+  + 'tail, a zero tail misprices precisely the term s scales, and raising s magnifies the '
+  + 'mispricing. An approximate solver therefore misleads most where the parameter being tuned is '
+  + 'the one the approximation distorts, which is not where a reader would think to look for it.'),
   P(`Exactness costs roughly ${(G15.exact_p50_ms / G15.greedy_p50_ms).toFixed(0)} times the compute of the greedy completion. `
   + `That multiplier is the real price of the claim. In absolute terms the worst observed solve took ${f(G15.exact_max_ms, 1)} ms, or `
   + `${f(100.0 * G15.exact_max_ms / 5000.0, 2)} % of the five-second control interval, so the multiplier is large and the `
