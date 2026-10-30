@@ -384,6 +384,17 @@ def solve_mpc_exact(
     )
 
 
+_ZERO_DELTAS: dict[int, tuple[int, ...]] = {}
+
+
+def _zeros(k: int) -> tuple[int, ...]:
+    z = _ZERO_DELTAS.get(k)
+    if z is None:
+        z = (0,) * k
+        _ZERO_DELTAS[k] = z
+    return z
+
+
 def _zero_tail_rollout(
     n: int,
     pipe: tuple[int, ...],
@@ -392,27 +403,57 @@ def _zero_tail_rollout(
     ctrl: ControlConfig,
     m: int,
     horizon: int,
-) -> tuple[float, list[int]]:
-    """Tracking cost of stages ``m..H-1`` and the committed base over the tail.
+) -> tuple[float, int, tuple[int, ...]]:
+    """Tracking cost of stages ``m..H-1``, the committed level entering the
+    tail, and the saturation corrections to committed across it.
 
-    The tail actions land strictly after the horizon, so a zero-tail rollout
+    Tail actions land strictly after the horizon, so a zero-tail rollout
     gives the exact in-horizon trajectory -- and hence the exact tracking
     cost and saturation corrections -- for every tail choice.
+
+    With every tail action zero the queue simply drains, so the item landing
+    at stage ``m+j`` is ``pipe[j]`` and the queue behind it is ``pipe[j+1:]``.
+    Walking that directly avoids rebuilding a tuple and re-summing the queue
+    at every step. Saturation is rare, so the all-zero correction vector is
+    shared rather than rebuilt: that also lets every unsaturated prefix share
+    one tail memo instead of allocating its own.
     """
 
     lo, hi = ctrl.n_min, ctrl.n_max
     q_up, q_dn = ctrl.q_up, ctrl.q_down
+    deep = tau > 1
     tracking = 0.0
-    base: list[int] = []
-    nn, pp = n, pipe
+    nn = n
+    rem = sum(pipe) if deep else 0
+    length = len(pipe)
+    committed0 = nn + rem if deep else nn
+    prev_c = committed0
+    deltas: list[int] | None = None
     for k in range(m, horizon):
-        base.append(committed_of(nn, pp, tau))
-        nn, pp = _fast_step(nn, pp, 0, tau, lo, hi)
+        j = k - m
+        if j < length:
+            landed = pipe[j]
+            rem -= landed
+        else:
+            landed = 0
+        v = nn + landed
+        if v < lo:
+            v = lo
+        elif v > hi:
+            v = hi
+        nn = v
+        c = nn + rem if deep else nn
+        d = c - prev_c
+        if d:
+            if deltas is None:
+                deltas = [0] * (horizon - m)
+            deltas[j] = d
+        prev_c = c
         dk = demand[k]
         err = float(nn - dk)
         tracking += (q_up if nn < dk else q_dn) * err * err
-    base.append(committed_of(nn, pp, tau))
-    return tracking, base
+    return (tracking, committed0,
+            _zeros(horizon - m) if deltas is None else tuple(deltas))
 
 
 def _complete(
@@ -428,16 +469,15 @@ def _complete(
 ) -> tuple[float | None, float]:
     """Exact tail cost and the residual tracking cost of stages ``m..H-1``."""
 
-    tracking, base = _zero_tail_rollout(
+    tracking, committed0, deltas = _zero_tail_rollout(
         n, pipe, demand, tau, ctrl, m, horizon
     )
     if m >= horizon:
         return 0.0, tracking
-
-    # Saturation corrections to committed over the tail, fixed by the prefix.
-    deltas = tuple(base[i + 1] - base[i] for i in range(len(base) - 1))
-    memo = cache.setdefault(deltas, {})
-    value = _tail_value(m, base[0], prev_u, deltas, m, horizon, ctrl, memo)
+    memo = cache.get(deltas)
+    if memo is None:
+        memo = cache[deltas] = {}
+    value = _tail_value(m, committed0, prev_u, deltas, m, horizon, ctrl, memo)
     return (None if value == _INF else value), tracking
 
 
@@ -455,12 +495,11 @@ def _recover_tail(
 
     if m >= horizon:
         return ()
-    _, base = _zero_tail_rollout(
+    _, committed0, deltas = _zero_tail_rollout(
         n, pipe, [0] * horizon, tau, ctrl, m, horizon
     )
-    deltas = tuple(base[i + 1] - base[i] for i in range(len(base) - 1))
     memo = cache.setdefault(deltas, {})
-    return _tail_argmin(m, base[0], prev_u, deltas, m, horizon, ctrl, memo)
+    return _tail_argmin(m, committed0, prev_u, deltas, m, horizon, ctrl, memo)
 
 
 def _tail_value(
