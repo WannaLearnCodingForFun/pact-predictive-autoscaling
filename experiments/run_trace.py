@@ -9,7 +9,8 @@ from experiments.harness import RESULTS, base_config, workload, _relaxed_rounded
 from pact.capacity.mapper import map_to_demand
 from pact.config import cold_start_ticks
 from pact.control.gates import apply_gates
-from pact.control.mpc import apply_plant, solve_mpc
+from pact.control.mpc import apply_plant
+from pact.control.mpc_exact import solve_mpc_exact as solve_mpc
 from pact.control.safety import evaluate_safety
 from pact.sim.queue_model import PoolSimulator
 from pact.telemetry.collector import Observation
