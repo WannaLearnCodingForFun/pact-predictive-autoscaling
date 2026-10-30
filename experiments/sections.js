@@ -175,6 +175,7 @@ const th3 = pick('deadband_theta', 3);
 const q1 = pick('asymmetry_qup_over_qdown', 1.0);
 const q20 = pick('asymmetry_qup_over_qdown', 20.0);
 const dm1 = pick('rate_limit_delta_max', 1);
+const dm4 = pick('rate_limit_delta_max', 4);
 const dm8 = pick('rate_limit_delta_max', 8);
 
 const sensitivity = [
@@ -227,6 +228,17 @@ const sensitivity = [
   + `${q1.value} to ${q20.value} moves violations only from ${f(q1.sla_mean, 2)} % to ${f(q20.sla_mean, 2)} %. Both findings are reported `
   + 'because they contradict the design intent, in which the deadband and the cost asymmetry were '
   + 'expected to be primary controls.'),
+  P('The rate limit is the one parameter that stops mattering. Raising Δmax from '
+  + `${dm4.value} to ${dm8.value} leaves the violation rate at ${f(dm8.sla_mean, 2)} %, over-provisioning at ${f(dm8.over_mean, 1)} % and the action `
+  + 'count at '
+  + `${f(dm8.act_mean, 1)} — identical to the default to the precision reported. Pool bounds, not the rate limit, `
+  + 'constrain the action set once Δmax is of the order of the pool itself: an action that would '
+  + 'move more than a few replicas is already inadmissible because it would land outside '
+  + '[Nmin, Nmax]. The cost of raising it is not identical, though. The exact search is '
+  + 'O((2Δmax + 1)^m), so median solve time rises from 20.8 ms at Δmax = 4 to 58.8 ms at 6 and '
+  + '110.9 ms at 8, with a worst case of 204 ms. Δmax above about four buys a controller that '
+  + 'behaves the same and costs five times as much to compute, which is a configuration error '
+  + 'rather than a trade-off.'),
   img('fig_sensitivity.png', 6.9),
   CAP('Fig. 10. Control-parameter sweeps. Blue circles on the left axis are the violation rate; '
   + 'orange triangles on the right axis are the oscillation count. Synthetic traces.'),
