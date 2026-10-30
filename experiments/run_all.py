@@ -317,6 +317,10 @@ def manifest() -> None:
             "e3_rounding_gap.csv", "e4_ablation_runs.csv",
             "e4_ablation_summary.csv", "e5_horizon_law.csv",
             "e6_frontier.csv", "e7_robustness.csv",
+            "e8_sensitivity.csv", "e8_solver_compare.csv",
+            "e9_solvetime.csv", "e10_per_workload.csv",
+            "e11_decisions.csv", "e12_coldstart.csv",
+            "e13_predictor_quality.csv", "e14_inference_trace.csv",
             "e15_exact_vs_greedy.json", "e15_validation.json",
         ],
         "not_executed": {
