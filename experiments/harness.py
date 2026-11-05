@@ -159,7 +159,8 @@ def _relaxed_rounded_u(
 ) -> int:
     """OptScaler-style: solve the relaxed tracking problem, round the result.
 
-    Reference: Zhang et al., OptScaler, PVLDB 17 (2024). That formulation has
+    Reference: Zou et al., OptScaler, PVLDB 17(12):4090-4103 (2024),
+    doi 10.14778/3685800.3685829. That formulation has
     real-valued decision variables and states the first-step solution "can be
     rounded for implementation"; there is no integrality constraint. This
     reproduces that choice on an otherwise identical objective so the cost of
