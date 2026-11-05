@@ -1,0 +1,7 @@
+stage,seconds,instrumented,source
+E5 horizon law + E6 frontier,6192,yes,rerun_rest.log
+E7 robustness,1698,yes,rerun_e7.log
+E8 control-parameter sweeps (5),10390,yes,rerun_e8[abc].log
+E9-E14,5017,yes,rerun_e9_14.log
+"E1-E4 main comparison, statistics, rounding gap, ablation",,no,run predates duration logging
+E15 exactness verification,,no,run predates duration logging

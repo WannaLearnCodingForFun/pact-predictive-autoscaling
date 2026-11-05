@@ -5,7 +5,11 @@ const d = require('docx');
 const { Paragraph, TextRun, AlignmentType } = d;
 const B = require('./build_paper.js');
 const { P, RUNS, H1, H2, H3, CAP, BUL, EQ, sub, sup, img, mkTable,
-        E1, E2, E3, E5, E6, E8, E9, E12, MAN, by, f } = B;
+        E1, E2, E3, E5, E6, E8, E9, E12, E15, RT, MAN, by, f } = B;
+
+const rtTotal = RT.filter(r => String(r.instrumented) === 'yes')
+  .reduce((a, r) => a + Number(r.seconds), 0);
+const rtMissing = RT.filter(r => String(r.instrumented) !== 'yes').length;
 
 const one = (rows, pred) => rows.find(pred);
 const fr = (m, u) => E6.find(r => r.method === m && Math.abs(r.u_target - u) < 1e-9);
@@ -112,12 +116,27 @@ const configTable = [
   + 'final column varies them.'),
   RUNS([
     { t: 'Reproduction. ', b: true },
-    { t: 'From a clean checkout: python3 experiments/run_all.py writes the primary result files; '
-       + 'python3 experiments/run_more.py writes the sensitivity, timing and breakdown files; '
-       + 'python3 experiments/make_figures.py and make_figures2.py regenerate every plot; '
-       + 'node experiments/paper.js rebuilds this document, reading each reported value from the '
-       + 'result files at build time. Total runtime for the experiment stage is approximately six '
-       + 'minutes on the platform recorded in results/manifest.json.' },
+    { t: 'From a clean checkout: run_all.py writes the main comparison, the significance tests, '
+       + 'the rounding gap, the ablation, the horizon sweep, the frontier and the corruption '
+       + 'sweep; run_e8_part.py runs the control-parameter sweeps one at a time and '
+       + 'merge_e8_parts.py assembles them; run_more.py writes the timing and breakdown files; '
+       + 'run_trace.py writes the decision trace; verify_exact.py reproduces the solver '
+       + 'validation of Section V-I. make_figures.py, make_figures2.py, make_fig_exact.py, '
+       + 'make_arch.py, make_solver_compare.py and make_equations.py regenerate every plot, '
+       + 'diagram and display equation; node paper.js rebuilds this document, reading each '
+       + 'reported value from the result files at build time. ' },
+    { t: 'Two scripts check the output rather than produce it: verify_numbers.py recomputes the '
+       + 'headline quantities from the result files and fails unless each appears in the '
+       + 'rendered document, and run_tests.py runs the test suite without pytest, which cannot '
+       + 'be installed in this environment. ' },
+    { t: `The experiment stage takes hours rather than minutes, because the exact solve is about `
+       + `two orders of magnitude more work per tick than the relaxation it replaces. The stages `
+       + `that recorded their own duration total ${(rtTotal / 3600).toFixed(1)} hours on the platform named in `
+       + `results/manifest.json, and the ${rtMissing} stages that predate that logging appear in `
+       + `results/runtime_stages.csv without a duration, so the figure is a lower bound. The same `
+       + `suite under the greedy-completion solver took about six minutes. That ratio is the `
+       + `price of the exactness claim, and it is paid offline: per tick the worst observed solve `
+       + `is ${f(100.0 * E15.paper_config.exact_max_ms / 5000.0, 2)} % of the control interval.` },
   ]),
 ];
 

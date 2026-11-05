@@ -395,8 +395,8 @@ SEC2.configTable.forEach(e => body.push(e));
 
 body.push(H1('V. Results and Discussion'));
 body.push(P(
-  `All values in this section are computed from the run logs written to the repository’s results directory. Tables III `
-+ `through XII and Figs. 2 through 15 are generated directly from those files.`));
+  `All values in this section are computed from the run logs written to the repository’s results directory. Every `
++ `table and figure from here on is generated directly from those files.`));
 
 body.push(H2('A. The Horizon–Dead-Time Law'));
 body.push(P(

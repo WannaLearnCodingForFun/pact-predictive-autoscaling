@@ -248,7 +248,13 @@ const sensitivity = [
 ];
 
 // ============================================================ V-G solve time
-const e9max = E9.reduce((a, r) => Math.max(a, r.max_solve_ms), 0);
+const e9exact = E9.filter(r => String(r.solver) === 'exact');
+// Quoting the Delta_max = 16, H = 30 cell as the costliest configuration was
+// wrong: that cell exceeded the node budget and was solved by the greedy
+// completion, so its timing is not a timing for Algorithm 2.
+const e9max = e9exact.reduce((a, r) => Math.max(a, r.max_solve_ms), 0);
+const e9bigx = e9exact.reduce((a, r) => (r.mean_solve_ms > a.mean_solve_ms ? r : a),
+                              e9exact[0]);
 const e9small = one(E9, r => r.delta_max === 1 && r.H === 4);
 const e9big = one(E9, r => r.delta_max === 16 && r.H === 30);
 const e9def = one(E9, r => r.delta_max === 4 && r.H === 12);
@@ -277,11 +283,21 @@ const solvetime = [
   + `by the greedy completion, so their times are not times for Algorithm 2. Synthetic traces, `
   + `2 families × 4 seeds per row. The control interval is 5 s.`),
   P(`At the configuration used throughout the paper the mean solve time is ${f(e9def.mean_solve_ms, 3)} ms, which is `
-  + `${f(e9def.budget_frac_pct, 4)} % of the control interval. The largest configuration tested, Δmax = ${e9big.delta_max} with a `
-  + `${e9big.H}-step horizon, costs ${f(e9big.mean_solve_ms, 3)} ms on average and ${f(e9max, 2)} ms at worst. Fig. 12(b) `
-  + 'plots measured time against the two parameters. The cost is set at configuration time rather '
-  + 'than by the data: for a given action set, horizon and dead time the search has a fixed shape, '
-  + 'and the spread across seeds reflects only how often admissibility prunes a branch.'),
+  + `${f(e9def.budget_frac_pct, 4)} % of the control interval. The costliest configuration the exact solver `
+  + `completed is Δmax = ${e9bigx.delta_max} at a ${e9bigx.H}-step horizon: ${f(e9bigx.mean_solve_ms, 1)} ms on average and ${f(e9max, 1)} ms `
+  + 'at worst. Larger cells in the grid are faster only because the exact search was abandoned '
+  + 'there, so their timings belong to the greedy completion and are excluded here; Fig. 12(a) '
+  + 'draws them hollow and unconnected for the same reason.'),
+  P('Fig. 12(b) plots those same exact solves against the number of prefixes the search '
+  + 'enumerates. Two regimes are visible and they do not lie on one curve. Where m = 1 the '
+  + 'enumeration is trivial and the cost is set by horizon length, because the recursion still '
+  + 'walks every stage to evaluate the tail. Where m = 4 the enumeration dominates, and the '
+  + 'measured cost grows markedly more slowly than the prefix count: from 81 prefixes to '
+  + '83 521, a factor near a thousand, the mean solve rises from 0.8 ms to 109 ms, a factor of '
+  + '140. Landing admissibility is the reason. The prefix count assumes every action in '
+  + '[−Δmax, Δmax] is available at every step, and most are not: an action that would carry the '
+  + 'committed total outside the pool bounds is rejected before the search descends. The '
+  + 'nominal count is an upper bound on the work, not an estimate of it.'),
   P('The frontier matters as much as the timings. Exact solution is affordable in two regions — '
   + 'short horizons, where few actions reach inside the horizon at all, and horizons long enough '
   + 'relative to the dead time that the pending queue stops distinguishing states — but not in the '
@@ -298,9 +314,11 @@ const solvetime = [
   + `problems with hundreds of coupled decision variables: there the exact search is not available `
   + `at all, as the frontier above already shows in miniature.`),
   img('fig_solvetime.png', 6.9),
-  CAP('Fig. 12. Solve-time scaling against action-set size and horizon. Points beyond '
-  + 'the exact solver’s node budget were produced by the greedy completion and are not '
-  + 'times for Algorithm 2. Synthetic traces.'),
+  CAP('Fig. 12. (a) Solve time against horizon, one line per action-set size; filled '
+  + 'markers and lines are exact solves, hollow markers are cells that exceeded the node budget '
+  + 'and were solved by the greedy completion, so they are not times for Algorithm 2 and are '
+  + 'left unconnected. (b) The exact solves alone against the number of enumerated prefixes, on '
+  + 'log axes. Synthetic traces.'),
 ];
 
 // ============================================================ V-H cold start

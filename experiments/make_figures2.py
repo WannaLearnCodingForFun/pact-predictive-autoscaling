@@ -109,26 +109,52 @@ def fig_solvetime():
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(6.9, 2.3))
     cmap = plt.get_cmap("viridis")
     ds = sorted(s.delta_max.unique())
+    # Connecting exact and fallback points with one line implies they came
+    # from the same solver. They did not: a fallback point is fast precisely
+    # because the exact search was abandoned, so Delta_max = 8 appeared to
+    # spike at H = 12 and then recover. Exact points carry the line; fallback
+    # points are drawn hollow and unconnected.
     for i, dm in enumerate(ds):
         d = s[s.delta_max == dm].sort_values("H")
-        a1.plot(d.H, d.mean_solve_ms, color=cmap(i / max(len(ds) - 1, 1)),
-                marker="o", label=f"$\\Delta_{{max}}$ = {dm}")
+        col = cmap(i / max(len(ds) - 1, 1))
+        e = d[d.solver == "exact"]
+        g = d[d.solver != "exact"]
+        a1.plot(e.H, e.mean_solve_ms, color=col, marker="o",
+                label=f"$\\Delta_{{max}}$ = {dm}")
+        if not g.empty:
+            a1.scatter(g.H, g.mean_solve_ms, facecolors="none", edgecolors=col,
+                       s=22, lw=1.0, zorder=3)
     a1.set_xlabel("Horizon $H$ (ticks)")
     a1.set_ylabel("Mean solve time (ms)")
-    a1.set_title("(a) Scaling with horizon and action set", fontsize=8.4)
+    a1.set_title("(a) Exact solves (lines); fallbacks hollow", fontsize=8.4)
     a1.legend(ncol=2, fontsize=6.5)
 
-    s = s.assign(work=s.candidates * s.H)
-    a2.scatter(s.work, s.mean_solve_ms, s=18, color=C["pact"],
-               edgecolor="white", lw=0.5, zorder=3)
-    k = np.polyfit(s.work, s.mean_solve_ms, 1)
-    xs = np.linspace(s.work.min(), s.work.max(), 50)
-    a2.plot(xs, np.polyval(k, xs), color=MUTED, lw=1.0, ls="--",
-            label=f"linear fit, slope {k[0]*1000:.2f} µs per unit")
-    a2.set_xlabel("Work proxy $(2\\Delta_{max}+1) \\times H$")
+    # Panel (b) previously plotted (2*delta_max+1) * H and fitted a straight
+    # line through it. That proxy is the complexity of the greedy-completion
+    # solver this one replaced; the exact search enumerates (2*delta_max+1)^m
+    # prefixes with m = max(1, H - tau + 1). The old fit also pooled rows that
+    # fell back to the greedy solver, which are fast precisely because they
+    # gave up, and so came out with a negative slope under a title claiming
+    # linearity.
+    TAU = 9                      # ceil(tau_c / dt) = ceil(45 / 5), base_config
+    m = np.maximum(1, np.minimum(s.H, s.H - TAU + 1))
+    s = s.assign(m=m, work=s.candidates.astype(float) ** m)
+    ex = s[s.solver == "exact"]
+
+    for mm, mark in ((1, "o"), (4, "s")):
+        g = ex[ex.m == mm]
+        if g.empty:
+            continue
+        a2.scatter(g.work, g.mean_solve_ms, s=22, marker=mark,
+                   color=C["pact"] if mm == 4 else C["rounded"],
+                   edgecolor="white", lw=0.5, zorder=3,
+                   label=f"$m$ = {mm}")
+    a2.set_xscale("log")
+    a2.set_yscale("log")
+    a2.set_xlabel("Enumerated prefixes $(2\\Delta_{max}+1)^{m}$")
     a2.set_ylabel("Mean solve time (ms)")
-    a2.set_title("(b) Cost is linear in the enumerated work", fontsize=8.4)
-    a2.legend(fontsize=6.8)
+    a2.set_title("(b) Measured cost against enumeration size", fontsize=8.4)
+    a2.legend(fontsize=6.8, title="exact solves only", title_fontsize=6.5)
     save(fig, "fig_solvetime.png")
 
 
