@@ -205,7 +205,10 @@ def fig_main():
         ax.set_yticklabels([NAME[m].split(" (")[0] for m in s.method] if key == "sla" else [])
         ax.set_xlabel(lab)
         ax.yaxis.grid(False)
-    fig.suptitle("Mean over 5 workloads $\\times$ 10 seeds, 95 % bootstrap CI",
+    runs = pd.read_csv(RES / "e1_runs.csv")
+    n_wl, n_seed = runs.workload.nunique(), runs.seed.nunique()
+    fig.suptitle(f"Mean over {n_wl} workloads $\\times$ {n_seed} seeds "
+                 "(synthetic and recorded), 95 % bootstrap CI",
                  fontsize=7.5, y=1.02, color=MUTED)
     save(fig, "fig_main_comparison.png")
 

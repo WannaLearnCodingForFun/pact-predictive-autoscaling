@@ -22,7 +22,6 @@ import html
 import json
 import re
 import statistics
-import sys
 import zipfile
 from pathlib import Path
 
@@ -130,6 +129,44 @@ def main() -> int:
     # 5 s interval for a 59 ms solve
     check("E15 exact max as share of 5 s interval (%)",
           fmt(pc["exact_max_ms"] / 50.0, 2))
+
+    # ---- E4 ablation: the capacity effects of the dead-time term and ceiling
+    e4 = {r["variant"]: r for r in rows("e4_ablation_summary.csv")}
+    for v in ("no_coldstart", "no_safety"):
+        if v in e4:
+            check(f"E4 {v} over-provisioning delta (pp)",
+                  fmt(abs(float(e4[v]["over_delta_vs_full"])), 1))
+
+    # ---- E16 forecast accuracy at the longest horizon
+    if (RES / "e16_forecast_accuracy.csv").exists():
+        e16 = rows("e16_forecast_accuracy.csv")
+        hmax = max(int(r["horizon"]) for r in e16)
+        for m in ("tcn", "persistence", "arima"):
+            sel = [r for r in e16 if r["model"] == m and int(r["horizon"]) == hmax]
+            if sel:
+                check(f"E16 {m} nMAE at h={hmax} (%)",
+                      fmt(float(sel[0]["nmae_pct"]), 2))
+
+    # ---- E17 trained arm on recorded traffic
+    if (RES / "e17_bracket_check.csv").exists():
+        for r in rows("e17_bracket_check.csv"):
+            if r["controller"] == "rounded" and r["metric"] == "scale_actions":
+                check(f"E17 {r['workload']} rounded trained actions",
+                      fmt(float(r["trained_mean"]), 2))
+
+    # ---- E21 bias probe: the shift applied to the oracle
+    if (RES / "e21_bias_probe.csv").exists():
+        e21 = rows("e21_bias_probe.csv")
+        for w in sorted({r["workload"] for r in e21}):
+            r = next(x for x in e21 if x["workload"] == w)
+            check(f"E21 {w} shift (req/s)", fmt(float(r["shift_req_s"]), 2))
+
+    # ---- E22 margin / ceiling ablation under imperfect predictors
+    if (RES / "e22_margin_ceiling_ablation.csv").exists():
+        e22 = rows("e22_margin_ceiling_ablation.csv")
+        full = [float(r["full_mean"]) for r in e22
+                if r["variant"] == "full" and r["metric"] == "sla_violation_pct"]
+        check("E22 largest full-controller violation (%)", fmt(max(full), 3))
 
     # ---- report
     width = max(len(a) for a, _ in CHECKS)

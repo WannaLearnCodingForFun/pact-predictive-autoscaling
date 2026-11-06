@@ -78,15 +78,26 @@ bites. `exact_is_tractable()` detects it from `(H, τ, Δmax)` and the harness
 falls back to the greedy completion there, recording which solver each run used
 (`exact_solver` in `summarise()`, and `mpc_solver` in `results/manifest.json`).
 
-- Every result at the paper's configuration (`H = 12, τ = 9`) is **exact**.
-- The horizon sweep (E5) is the one experiment that crosses the band. The
-  exact count of cells solved exactly is recorded per cell in
-  `results/e5_horizon_law.csv` (`exact_frac`) and quoted in the manuscript
-  from that column rather than stated here.
-- Every cell immediately either side of the `H·Δt = τc` boundary is solved
-  exactly, so the transition the paper measures is not affected by the
-  fallback; the fallbacks sit well above the boundary, where the controller
-  is already at its violation floor.
+- Every result at the paper's configuration (`H = 12, τ = 9`) is **exact**:
+  `exact_tick_pct` is 100 in every PACT run of `e1_runs.csv`,
+  `e4_ablation_runs.csv` (the `no_mpc` variant has no optimiser, hence 0) and
+  `e17_trained_runs.csv`.
+- Three experiments vary `H` or `τc` far enough to cross the band:
+  - **E5**, the synthetic horizon sweep: 14 of its 60 cells fall back
+    (`results/e5_horizon_law.csv`, `exact_frac`), at τc = 30 s for H ≥ 12,
+    45 s for H ≥ 16, 60 s for H ≥ 20 and 90 s for H ≥ 24. All 14 are above
+    the `H·Δt = τc` boundary, and the first cell above the boundary is exact
+    at every τc, so the transition the paper measures is not affected.
+  - **E18**, the same grid on the two recorded families: the same 14
+    (τc, H) cells fall back on each, 28 of 120 (`results/e18_horizon_law_real.csv`).
+  - **E12**, the cold-start sweep at fixed `H = 30`: the predictive
+    controller is exact at τc = 5 s and 15 s (`exact_tick_pct` = 100) and
+    greedy on every tick at τc ≥ 30 s. Behavioural columns of the re-run
+    match the previous `e12_coldstart.csv`. Table XIII and Fig. 14 mark
+    the greedy rows.
+- The E9 solve-time grid records the solver per cell; `H = 20` and `H = 30`
+  are greedy at every `Δmax`, so E9's timings for those rows are timings of the
+  completion, not of the exact solve.
 
 A first version of `exact_is_tractable()` got this wrong in the optimistic
 direction: it assumed memoisation always collapses the search once
@@ -132,8 +143,8 @@ adds the landing-admissibility test).
 | Greedy objective strictly worse | 540 (45.00 %) |
 | Greedy objective strictly better | **0** |
 | Mean / max relative objective excess | 1.148 % / 99.53 % |
-| Exact solve, median / p95 / max | 28.34 / 40.94 / 90.92 ms |
-| Greedy solve, median / p95 / max | 0.269 / 0.397 / 1.469 ms |
+| Exact solve, median / p95 / max | 15.17 / 19.66 / 34.25 ms |
+| Greedy solve, median / p95 / max | 0.273 / 0.339 / 0.903 ms |
 
 The gap is one-sided — the greedy completion never beats the exact solver,
 which is the expected signature of an exact reference. It is also
@@ -141,15 +152,20 @@ concentrated rather than uniform: mean relative excess 1.1 %, maximum 99.5 %.
 A controller built on it is almost always identical and occasionally
 substantially wrong.
 
-Exactness costs about 105× the compute. In absolute terms the worst observed
-solve was 90.9 ms, **1.82 % of the 5 000 ms control interval**.
+Exactness costs about 56× the compute at the median. In absolute terms the
+worst observed solve was 34.3 ms, **0.69 % of the 5 000 ms control
+interval**. These timings are from a run on an otherwise idle machine; an
+earlier run made while other experiments were executing measured 1.9–2.7×
+longer (28.3 / 40.9 / 90.9 ms) with identical decisions, so the
+absolute timings in the manuscript are the idle-machine ones and are labelled
+as such.
 
 ---
 
 ### Cost of exactness, and one optimisation
 
-The exact solve is roughly two orders of magnitude more work per tick than
-the greedy completion. That is the honest price of the claim, and it is
+The exact solve is between one and two orders of magnitude more work per
+tick than the greedy completion (56× at the median, 38× at the maximum). That is the honest price of the claim, and it is
 reported rather than buried; what matters is that the absolute cost stays a
 small fraction of the control interval.
 
@@ -217,7 +233,7 @@ such.
   long-dead-time regime and polynomial in the short one.
 - **Section V-I added** reporting the exact-versus-greedy comparison.
 - **Abstract, introduction and conclusion** restructured around three
-  findings rather than two, with the tractability result stated as its own
+  findings rather than two (four after the recorded-traffic work of §9), with the tractability result stated as its own
   contribution and the solver cost reported honestly (it rose by two orders
   of magnitude and is still under 2 % of the control interval).
 
@@ -233,10 +249,11 @@ such.
 - **Duplicated sections removed.** `inferenceTrace`, `positioning` and
   `discussion` were each spliced into the document **twice**. Fixed.
 - **Section lettering repaired.** Section V had two subsections lettered "F"
-  and no "M"; letters are now A–P with no gaps or collisions, and all
-  cross-references were updated to match.
-- **Table numbering repaired.** Two tables were numbered XVII. All 18 tables
-  are now sequential in document order, with cross-references updated.
+  and no "M"; letters were made gap- and collision-free, and all
+  cross-references were updated to match. The recorded-traffic results of §9
+  add Section V-Q.
+- **Table numbering repaired.** Two tables were numbered XVII. Tables are now
+  sequential in document order (23 after §9), with cross-references updated.
 
 ### Writing
 
@@ -316,113 +333,246 @@ come first.
   and shrinks any that overruns, which keeps the diagram correct at
   whatever width it is rendered.
 
-After these, a sweep of all 26 rendered pages finds no content outside the
-margins.
+After these, a sweep of the 33 rendered pages of the current PDF finds no
+content outside the side margins (≈0.75 in) or below ≈0.49 in of the
+bottom edge (the footer). Some full-width figures open a page with a
+large top gap; captions stay with their tables and figures.
 
 ---
 
 ## 7. Test suite
 
-`pytest` cannot be installed here (no package-index access), so
-`experiments/run_tests.py` runs the suite with a thin stand-in
-(`experiments/_pytest_shim.py`) supplying `raises`, `approx`, `fixture`,
-`mark`, `importorskip` and `parametrize` expansion.
+Two runners are used. `pytest` is available in the project venv.
 
-| | |
-|---|---|
-| Test files | 23 |
-| Passed | **67** |
-| Failed | **0** |
-| Skipped (need real fixtures) | 18 |
-| Import errors | 9 |
+| Runner | Files | Passed | Failed | Skipped |
+|---|---|---|---|---|
+| `pytest -q` | 27 test modules | **186** | **0** | 1 |
+| `experiments/run_tests.py` | 24 files it enumerates | **145** | **0** | 42 (fixture-gated) |
 
-Eight import errors are `torch`, which is unavailable. The ninth was a
-genuine syntax error in the repository's own test file —
-`tests/test_eval_manifest.py` line 23 read `path.unlink():` — now fixed.
-
-`tests/test_mpc_exact.py` is new: it brute-forces the full decision space on
-seven configurations spanning both dead-time regimes and checks that the
-exact solver attains the optimum, that the tail optimum is not all-zero, and
+`tests/test_mpc_exact.py` brute-forces the full decision space on seven
+configurations spanning both dead-time regimes and checks that the exact
+solver attains the optimum, that the tail optimum is not all-zero, and
 that the exact objective never exceeds the greedy one.
+
+`ruff` and `mypy` are clean on `pact/`, `tests/` and `scripts/` (the
+configured scope). `experiments/` is outside that scope; newly added
+files there (`run_real.py`, `train_forecasters.py`, `make_real_traces.py`,
+`lambda_forecast.py`, `make_fig_real.py`, `run_stage.py`) are ruff-clean
+as well.
+
+`experiments/verify_numbers.py` locates 35 of 35 checked values in the
+rendered document after the final build.
 
 ---
 
 ## 7b. Final state of the result files
 
-Every experiment E1–E15 has been re-run under `solve_mpc_exact`. The
-sequence took roughly eleven hours of background compute and was done in
-pieces, because the exact solve is about two orders of magnitude more work
-per tick than the completion it replaced.
+Every experiment E1–E13 and E15 was re-run under `solve_mpc_exact` and
+under the start-state rule of §9. E3, E9 and E15 were then re-run again
+on an otherwise idle machine; behavioural columns were identical to the
+loaded copies (kept in `/tmp/pact_loaded/`) and the idle-machine
+timings are the ones quoted in the manuscript:
 
-Two findings came out of the re-run rather than out of the solver change
-itself, and both are in the manuscript:
+| Experiment | Quantity | Idle-machine value |
+|---|---|---|
+| E15 | exact p50 / p95 / max | 15.17 / 19.66 / 34.25 ms |
+| E3 | max mean solve | 17.54 ms |
+| E9 | default (Δmax = 4, H = 12) mean | 10.42 ms |
+| E9 | Δmax = 8, H = 12 mean | 56.16 ms |
+
+Two findings came out of the exact-solver re-run rather than out of the
+solver change itself, and both are in the manuscript:
 
 - **A tuning conclusion was an artifact.** Under the greedy completion,
-  raising the churn weight to unity drove the violation rate to 0.013 % and
-  held it there at s = 1.0, 1.5 and 2.0 — identical to four decimal places
-  across three values. Under the exact solver the same sweep sits near
-  0.58 %. The direction of the effect survives (over-provisioning
-  39.5 → 22.2 %, oscillations 51.9 → 29.3 as s goes 0 → 1); the magnitude
-  did not. Greedy completion zeroes the tail, a zero tail misprices exactly
-  the term s scales, and raising s magnifies the mispricing — so the
-  approximation fails hardest in the parameter a reader would be tuning.
-  `results/e8_solver_compare.csv`, reported in Section V-I.
+  raising the churn weight to unity drove the violation rate to 0.0089 %
+  and held it there at s = 1.0, 1.5 and 2.0. Under the exact solver the
+  same sweep sits near 0.38–0.42 % (`results/e8_solver_compare.csv`,
+  Section V-I). The direction of the effect survives (over-provisioning
+  36.9 → 22.2 %, oscillations 52.6 → 33.7 as s goes 0 → 1); the
+  magnitude did not.
 - **The rate limit stops binding.** Δmax = 4, 6 and 8 give identical
-  service level, capacity and action counts, because pool bounds rather
-  than the rate limit constrain the action set once Δmax approaches the
-  pool size. Median solve time nonetheless rises 20.8 → 58.8 → 110.9 ms.
-  Raising Δmax past about four buys identical behaviour at five times the
-  compute.
+  service level, capacity and action counts in `e8_sensitivity.csv`.
+  Median solve time at H = 12 nonetheless rises 10.42 → 56.16 ms
+  (`e9_solvetime.csv`). Raising Δmax past about four buys identical
+  behaviour at five times the compute.
 
-Claims that survived the re-run unchanged, which is worth recording because
-the temptation is to report only what moved:
+Claims that survived the re-run (worth recording because the temptation
+is to report only what moved):
 
-- The horizon–dead-time transition, at every cold-start setting tested.
-- The integrality gap at aggressive operating points (17.92 % rounded
-  against 3.58 % exact at u\* = 0.85).
+- The horizon–dead-time transition, at every synthetic cold-start
+  setting that straddles the boundary.
+- The integrality gap at aggressive operating points (16.18 % rounded
+  against 2.86 % exact at u\* = 0.85).
 - The absence of a significant service-level advantage at the default
-  operating point: pact against rounded on violations moved from
-  p_holm = 0.083 to 0.122, still not significant, so the paper's hedge
-  stands.
-- The adaptive margin and safety ceiling remain inert.
+  operating point: pact against rounded on violations, p_holm = 0.103,
+  still not significant.
+- The cooldown as the dominant stability control.
 
-One number improved: under-configuring the horizon costs 3.69 pp against
-the reactive baseline rather than 6.67 pp, so the exact controller degrades
-less badly when misconfigured.
+Claims that **did not** survive, and were corrected rather than
+retained:
 
-`results/manifest.json` names the solver, lists all nineteen result files,
-and keeps the `not_executed` block.
+- The adaptive margin and safety ceiling are **not** inert. The ceiling
+  issued 140 overrides in the E1 exact-oracle runs and 160 in the E4
+  full-controller synthetic runs; the margin moved in 3 of 20 recorded
+  oracle runs in E4 and in 63–86 of 86 recorded runs under imperfect
+  predictors (E17, E22). An earlier manuscript called both inert; the
+  HEAD result files already showed the ceiling firing and did not
+  record `gamma_max` at all, so the margin claim had no measurement
+  behind it.
+- Removing the cold-start term is **not** a no-op: it cuts
+  over-provisioning by 16.9 points and churn by 19.9 actions (E4
+  `no_coldstart`).
+- The exact-versus-reactive gap is **not** "three orders of magnitude"
+  everywhere; the E3 violation gap range is computed from the file.
+- The unsourced Δmax timings 20.8 / 58.8 / 110.9 / 204 ms were replaced
+  by E9 cells at H = 12.
+- Cooldown is not free; asymmetry is not inert; the churn curve is not
+  flat.
+
+E12 was re-run once more after `exact_tick_pct` was added to its
+writer. Behavioural columns matched the previous file; the new column
+shows exact solution only at τc = 5 s and 15 s.
+
+`results/manifest.json` names the solver, lists the executed files
+including E16–E22, and keeps a `not_executed` block. It currently
+records `git_dirty: true` on commit `59f4ec0523`; the SHA on the
+remote is that commit, and the uncommitted work is this revision. The
+manifest should be regenerated after a commit and push.
 
 ---
 
 ## 8. Unresolved limitations
 
-These are unchanged by this revision or newly introduced by it, and none is
-hidden in the manuscript.
+None of these is hidden in the manuscript.
 
-1. **No real deployment.** The plant is `pact.sim.queue_model.PoolSimulator`,
-   an analytical M/G/c model with a Kingman p95 approximation. No Docker
-   daemon is available, so the actuation backend was never exercised and the
-   cold-start interval is configured, not measured.
-2. **No trained forecaster.** `torch` cannot be installed, so the TCN was
-   never run. Every controller is bracketed between perfect foresight and
-   persistence. Conclusions holding under both brackets are attributable to
-   the control law; nothing here establishes what a trained predictor would
-   do.
-3. **Synthetic workloads only.** The five trace families are generated. The
-   public archives could not be fetched.
-4. **The exact solve is not universally tractable.** It is cheap at long dead
-   time relative to the horizon, and cheap at short dead time through state
-   collapse. In the band between, it is not, and the controller falls back.
-   §2 gives the measured extent.
-5. **Reference [1]'s venue is unconfirmed.** The work exists and the
-   authorship is corroborated, but no published venue could be located; it is
-   cited as a preprint.
-6. **References [7], [8] and [10] carry reduced detail** because co-author
-   lists or volume/issue/pages could not be verified against a primary
-   source. Nothing unverified was retained.
-7. **No similarity report.** See §4.
-8. **The margin and safety ceiling remain inert** across every experiment.
-   They are reported as inert rather than removed, because that is the
-   measurement.
+1. **No real deployment.** The plant is
+   `pact.sim.queue_model.PoolSimulator`, an analytical M/G/c model with
+   a Kingman p95 approximation. No Docker daemon is available, so the
+   actuation backend was never exercised and the cold-start interval is
+   configured, not measured.
+2. **One trained forecaster, one seed.** Torch is installed and a TCN
+   was trained (188 504 parameters, 17 epochs, MPS). Every neural
+   baseline was also trained once. There is no training-variance
+   estimate. The TCN ranked 6 of 7 on nMAE at the 12-step horizon
+   (6.70 % against 5.62 % for ARIMA).
+3. **One recorded trace, rescaled.** Five synthetic families plus two
+   scalings of WorldCup98 days 41–50. Bitbrains GWA-T-12 was located
+   and verified (`data/provenance.json`) but not used: it is 5-minute
+   per-VM utilisation, not request arrivals.
+4. **The exact solve is not universally tractable.** Cheap at long dead
+   time relative to the horizon, and cheap at short dead time through
+   state collapse. In the band between, the controller falls back.
+   §2 gives the measured extent (E5: 14/60; E18: 28/120; E12: 5 of 7
+   cold-start settings).
+5. **Reference [1]'s venue is unconfirmed.** Cited as a preprint.
+6. **References [7], [8] and [9] carry reduced detail** because
+   co-author lists or volume/issue/pages could not be verified against
+   a primary source.
+7. **No similarity report.** See §4. No plagiarism percentage is
+   claimed.
+8. **The margin and safety ceiling have unestablished value.** They
+   are no longer described as inert. Disabling either produced no
+   significant change in the violation rate (E4 under the oracle; E22
+   under persistence and the TCN). E22's full-controller violation is
+   at most 0.006 %, so those tests have almost no room to show a
+   service-level benefit. The ceiling issued 0 overrides on recorded
+   traffic. The corruption model is symmetric, so it never produces
+   the sustained under-prediction the ceiling exists to catch.
 9. **Single service.** One replica pool; no inter-service coupling.
+10. **The horizon–dead-time law was not testable on recorded traffic.**
+    The reactive baseline never violated on either WorldCup98 scaling
+    (E18).
+11. **The cause of the trained arm's churn reduction is unidentified.**
+    E21 shows the TCN's mean bias accounts for the capacity-side
+    departures (14 of 14) but agrees in direction on only 4 of 8
+    churn-side comparisons. The smoothing hypothesis from E13 was not
+    tested.
+
+---
+
+## 9. Recorded traffic and the trained forecaster
+
+This is the work after the exact-solver revision. Every experiment,
+synthetic and recorded, was re-run under the start-state rule
+`initial_replicas = max(4, min(ceil(λ[0]/(μ u*)), n_max))` after E20
+showed that a fixed start of four replicas put every violation on
+WC98/test in the first 30 ticks (92 early ticks falling to 0). The
+rule changes 5 of 45 synthetic windows (diurnal) and 9 of 9 WC98/test
+windows.
+
+### Data
+
+WorldCup98 days 41–50 (5–14 June 1998), 41 files, 250 257 178 requests,
+fetched 2026-11-05. Provenance, per-file SHA-256 and the ITA copyright
+notice are in `data/`. Two scalings: WC98/trace (whole-trace peak at
+85 % of pool capacity) and WC98/test (test-split peak at 85 %). The
+test split is 13–14 June, a weekend.
+
+### E16 — forecast accuracy
+
+At H = 12, nMAE: ARIMA 5.62 %, Transformer 5.75 %, GRU 5.81 %, BiLSTM
+6.08 %, LSTM 6.41 %, TCN 6.70 %, persistence 6.72 %. The TCN's bias at
+H = 12 is +2.64 req/s and it under-forecasts on 26.1 % of windows.
+
+### E17 — trained arm versus the brackets
+
+24 comparisons (2 families × 2 controllers × 6 metrics). Placement:
+
+| Position | Count |
+|---|---|
+| Between the brackets | 7 (1 degenerate: WC98/test, exact, violation, all 0) |
+| Better than both | 13 |
+| Worse than both | 4 |
+
+The trained arm did **not** land between the brackets per metric. The
+outside-the-bracket comparisons were reported as measured; the model
+was not re-tuned. 18 differences vs persistence are significant after
+Holm correction (14 in the trained arm's favour, 4 against); 18 vs the
+oracle.
+
+### E21 — bias probe
+
+The oracle was shifted by the TCN's mean bias (2.145 req/s on
+WC98/trace, 8.647 on WC98/test). The shifted oracle matches the trained
+arm's direction in 14 of 14 capacity-side comparisons and is closer to
+it in 14 of 14. Churn-side: 4 of 8 agree. The rounded controller's
+churn halving under the trained arm is not explained by bias.
+
+### E22 — margin and ceiling under imperfect predictors
+
+The ceiling issued 0 overrides, so disabling it is identical. The
+margin moved in 63–86 of 86 runs. Disabling it never changed
+violations significantly (floor effect: full-controller violation ≤
+0.006 %) and significantly lowered over-provisioning in 3 of 4 cases
+(−1.29, −2.43, −1.15 pp).
+
+### E18 / E19 — law and ceiling on recorded traffic
+
+E18: reactive never violates on either family. WC98/test is 0
+everywhere; WC98/trace has 1–4 violation ticks of 3600, only above the
+boundary at long H. Verdict: not testable. E19: 0 ceiling overrides;
+curves coincide.
+
+### Other corrections made while reading the rendered text
+
+- Section IV lettering had two "F" subsections and a skipped "B"; it
+  is now A–G.
+- `experiments/build_paper.js` CSV loader did not honour RFC-4180
+  quotes, so Table XXI read the wrong margin counts from `e1_runs.csv`
+  (whose label field contains commas). Fixed with `splitCsvLine`.
+- Empty Holm p-values (identical paired runs) were counting as
+  significant under `Number('') < 0.05`. Guarded; Table XX now reads
+  18 vs persistence, not 19.
+- V-I claimed the horizon sweep was the one experiment that crossed
+  the fallback band; E12 and E18 also do. Disclosed.
+- V-J called the H = 30 sweep "integer-exact" on every row; only τc =
+  5 s and 15 s are.
+- Configuration guidance had claimed deadband and asymmetry "neither
+  was found to matter"; both claims were already contradicted by
+  Table X and are now computed from E8.
+- The conclusion's "firmest of the three results" sentence now
+  restricts the horizon law to the synthetic families.
+
+The controller remains `pact/control/mpc_exact.py`. The greedy
+completion in `pact/control/mpc.py` is used only as the E15 comparison
+arm and as the recorded fallback.

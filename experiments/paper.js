@@ -11,9 +11,13 @@ const B = require('./build_paper.js');
 const SEC = require('./sections.js');
 const SEC2 = require('./sections2.js');
 const SEC3 = require('./sections3.js');
+const SEC4 = require('./sections4.js');
+const E22_EXISTS = SEC4.E22_EXISTS;
+const lawTestable = Object.values(SEC4.CL).filter(c => c.reactiveViolates);
+const lawReal = lawTestable.length > 0 && lawTestable.every(c => c.drops === c.both.length);
 const { P, RUNS, H1, H2, H3, CAP, BUL, EQI, sub, sup, img, mkTable,
         E1, E2, E3, E4, E5, E6, E7, E15, MAN, by, f, F,
-        TEXT_W, COL_W, COL_GAP } = B;
+        TEXT_W, COL_W, COL_GAP, E16, E17B, TCN, WC, WCT, PROV, fams, uniq, REAL_FAMS } = B;
 
 const ROOT = path.resolve(__dirname, '..');
 
@@ -26,6 +30,10 @@ const re = by(E1, 'method', 'reactive');
 const st = by(E1, 'method', 'static');
 
 const sig = (m, k) => E2.find(r => r.method === m && r.metric === k);
+const FAM_E3 = fams(uniq(E3));
+const series = a => (a.length < 2 ? a.join('') : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`);
+const FAM_E1 = fams(uniq(B.csv('e1_runs.csv')));
+const FAM_E4 = fams(uniq(B.csv('e4_ablation_runs.csv')));
 const fr = (m, u) => E6.find(r => r.method === m && Math.abs(r.u_target - u) < 1e-9);
 
 // horizon cliff: for each tau, the smallest H meeting the Eq.19 bound and the
@@ -65,6 +73,10 @@ const TRUE = v => v === true || v === 'True' || v === 'true';
 const noise0 = E7.find(r => r.forecast_noise_sigma === 0 && TRUE(r.safety_guard));
 const noiseHi = E7.find(r => r.forecast_noise_sigma === 0.4 && TRUE(r.safety_guard));
 const reRef = E7.find(r => r.forecast_noise_sigma === -1);
+const E7on = E7.filter(r => r.forecast_noise_sigma >= 0 && TRUE(r.safety_guard));
+const E7off = sg => E7.find(r => r.forecast_noise_sigma === sg && !TRUE(r.safety_guard));
+const E7ovr = E7on.filter(r => r.overrides_total > 0);
+const E7slaSame = E7on.every(r => r.sla_mean === E7off(r.forecast_noise_sigma).sla_mean);
 
 // ---------------------------------------------------------------- front
 const title = [
@@ -93,13 +105,15 @@ const title = [
         'Container auto-scalers decide how many replicas to run, and that decision is an integer. '
       + 'Published predictive controllers nevertheless solve a relaxed, real-valued problem and round the result, '
       + 'and they rarely state how the forecast horizon should be chosen relative to the time a replica takes to become ready. '
-      + 'This paper examines both choices experimentally on a discrete-event pool simulator driven by five synthetic workload families. '
-      + 'Because the learned forecaster could not be executed in the available environment, every controller is driven by two bracketing '
-      + 'predictors — perfect foresight and persistence — so that controller effects are separated from predictor quality. '
-      + 'Three findings follow. First, the forecast horizon must cover the actuation dead time or prediction is actively harmful: '
+      + `This paper examines both choices experimentally on a discrete-event pool simulator driven by five synthetic workload families `
+      + `and by ${PROV.worldcup98.subset.days[1] - PROV.worldcup98.subset.days[0] + 1} days of the 1998 World Cup web-server log at two scalings. Every controller is run with two bracketing `
+      + 'predictors, perfect foresight and persistence, so that controller effects are separated from predictor quality, and on the '
+      + 'recorded traffic also with a temporal convolutional forecaster trained on its earlier days. '
+      + 'Four findings follow. First, the forecast horizon must cover the actuation dead time or prediction is actively harmful: '
       + `averaged over the ${cliffDrop.length} cold-start settings for which both sides of the boundary were sampled, violations fall from ${f(meanBelow)} % to ${f(meanAbove)} % as the horizon crosses `
       + `HΔt = τc, and below that threshold the predictive controller is up to ${f(Math.abs(worstNeg))} percentage points worse than a reactive baseline, `
-      + `while above it it is up to ${f(bestPos)} points better. `
+      + `while above it it is up to ${f(bestPos)} points better${lawReal ? '; the transition reappears on the recorded traffic'
+        : lawTestable.length ? '' : '; on the recorded traffic at the scalings used, the reactive baseline never violated, so the transition could not be tested there'}. `
       + 'Second, the integer problem can be solved to global optimality rather than approximated. The dead time '
       + 'confines the tracking-relevant decisions to the first H − τ + 1 steps of the horizon and leaves the '
       + 'remainder separable. '
@@ -110,8 +124,11 @@ const title = [
       + `controller disagrees with the exact solution on ${f(E3R[0].dis, 1)}–${f(E3R[4].dis, 1)} % of control ticks and, at an aggressive `
       + `utilisation target of 0.85, reaches ${f(fr('rounded-oracle', 0.85).sla_mean, 2)} % violations against ${f(fr('pact-oracle', 0.85).sla_mean, 2)} % for the exact controller. `
       + `Exact solution costs at most ${f(solveMax, 1)} ms per tick in the mean and ${f(E15.paper_config.exact_max_ms, 1)} ms in the worst single solve observed, under ${f(E15.paper_config.exact_max_ms / 50.0, 2)} % of the control interval. `
-      + 'These results come from simulation with synthetic workloads and bracketing predictors, not from a '
-      + `deployed system; every value reported is measured, and none is estimated or illustrative.` }),
+      + `Fourth, the trained forecaster does not sit between the brackets as the protocol assumes: it lies inside a non-degenerate bracket on `
+      + `${SEC4.nBetween - SEC4.degenerate.length} of ${SEC4.nBetween + SEC4.nBelow + SEC4.nAbove - SEC4.degenerate.length} closed-loop comparisons. Its upward forecast bias reproduces the direction of its capacity-side effects in `
+      + `${SEC4.capAgree} of ${SEC4.capRows.length} cases but not its reduction of the rounded controller’s churn. `
+      + 'These results come from simulation, not from a deployed system; every value reported is measured, and none is '
+      + 'estimated or illustrative.' }),
     ],
   }),
   new Paragraph({
@@ -170,7 +187,7 @@ body.push(P(
 SEC2.workedExample.forEach(e => body.push(e));
 
 body.push(H2('C. Contributions'));
-body.push(P('This paper makes four contributions, each supported by measurements reported in Section V.'));
+body.push(P('This paper makes five contributions, each supported by measurements reported in Section V.'));
 body.push(BUL(
   'A measurement of the horizon–dead-time law. Sweeping the cold-start interval and the forecast horizon independently '
 + 'shows a sharp transition in service-level attainment that coincides with the condition HΔt ≥ τc. Below the transition '
@@ -190,12 +207,18 @@ body.push(BUL(
   'An evaluation protocol that separates controller effects from predictor quality by bracketing every controller between '
 + 'a perfect-foresight predictor and a persistence predictor, so that conclusions holding under both brackets are '
 + 'attributable to the control law.'));
+body.push(BUL(
+  'A test of the protocol and of the findings on recorded traffic. A temporal convolutional forecaster is trained on '
++ 'ten days of the 1998 World Cup web-site access log, compared against recurrent, attention-based and statistical '
++ 'baselines, and placed in the loop between the two brackets; the earlier findings are then re-tested on the '
++ 'recorded trace, and those that do not survive are reported as not surviving.'));
 
 body.push(H2('D. Organisation'));
 body.push(P(
   'Section II reviews existing auto-scaling systems and groups the recent literature by the mechanism each study adopts. '
 + 'Section III develops the controller. Section IV describes the experimental setup, the simulated plant and the workloads. '
-+ 'Section V reports results. Section VI states the limitations, several of which are substantial. Section VII concludes.'));
++ 'Section V reports results, ending in Section V-Q with the recorded trace and the trained forecaster. Section VI '
++ 'discusses them, Section VII states the limitations, several of which are substantial, and Section VIII concludes.'));
 
 // ===== II. Literature
 body.push(H1('II. Existing Systems and Related Work'));
@@ -314,7 +337,7 @@ body.push(H2('D. Margin Adaptation and Safety Ceiling'));
 body.push(P('A drift monitor compares the replica count the observed load actually required against the count predicted '
 + 'τ ticks earlier and adapts the margin by the clipped integral update (11). A separate ceiling bypasses the optimiser '
 + 'and every gate when observed utilisation exceeds an emergency threshold, so that an unprecedented burst is not held '
-+ 'back by the deadband. Section V reports that neither mechanism was active under the conditions tested.'));
++ 'back by the deadband. Sections V-E, V-F and V-Q report when each of them acted.'));
 body.push(EQI(11));
 
 // ===== IV. Setup
@@ -332,20 +355,27 @@ body.push(P(
 + `approximation diverges; such ticks are censored at ${'5000'} ms and the censoring rate is reported with every mean.`));
 body.push(RUNS([
   { t: 'Environment. ', b: true },
-  { t: `All runs executed on ${MAN.platform}, Python ${MAN.python}, NumPy ${MAN.numpy}, `
-     + `at repository commit ${String(MAN.git_sha).slice(0, 10)}. Each run is ${MAN.n_ticks_per_run} control ticks at `
-     + `Δt = 5 s, giving a simulated duration of ${(MAN.n_ticks_per_run * 5 / 60).toFixed(0)} minutes. `
-     + `Results are reported over ${MAN.n_seeds} seeds unless stated otherwise.` },
+  { t: `All runs executed on ${MAN.platform}, Python ${MAN.python}, NumPy ${MAN.numpy}, PyTorch ${MAN.torch} and `
+     + `statsmodels ${MAN.statsmodels}, at repository commit ${String(MAN.git_sha).slice(0, 10)}`
+     + `${MAN.git_dirty ? ' with uncommitted changes' : ''}. The neural forecasters were trained on the `
+     + `${String(TCN.train_device).toUpperCase()} device of that machine and evaluated on its CPU. Each run is `
+     + `${MAN.n_ticks_per_run} control ticks at Δt = 5 s, giving a simulated duration of `
+     + `${(MAN.n_ticks_per_run * 5 / 60).toFixed(0)} minutes, and starts with four replicas or the requirement (2) of its `
+     + `first tick, whichever is larger. Results are reported over ${MAN.n_seeds} seeds unless stated otherwise.` },
 ]));
 
 SEC3.plantDetail.forEach(e => body.push(e));
 
-body.push(H2('D. Datasets'));
+body.push(H2('C. Datasets'));
 body.push(P(
-  'The arrival traces are synthetic and generated by the harness in the repository; they are not drawn from any public '
-+ 'dataset. This is a limitation and is stated as such in Section VI. Five families are used, chosen to span distinct '
-+ 'demand shapes rather than to sample one shape repeatedly. Each is parameterised by a seed that perturbs it with '
-+ 'additive Gaussian noise, and the same seed produces the same trace for every method, so comparisons are paired.'));
+  'Two kinds of arrival trace are used. Five synthetic families are generated by the harness in the repository, chosen '
++ 'to span distinct demand shapes rather than to sample one shape repeatedly. Each is parameterised by a seed that '
++ 'perturbs it with additive Gaussian noise, and the same seed produces the same trace for every method, so comparisons '
++ `are paired. The recorded workload is the 1998 World Cup web-site access log [11], days ${PROV.worldcup98.subset.days[0]}–`
++ `${PROV.worldcup98.subset.days[1]}, converted to an arrival rate at the control interval and rescaled at two levels so `
++ 'that it fits the simulated pool; Section V-Q describes the trace, the scaling and the chronological split. For a '
++ 'recorded family the seed selects one of the disjoint windows of the test split, so recorded runs are paired in the '
++ 'same way.'));
 body.push(mkTable(
   ['Trace family', 'Shape', 'Provenance', 'Ticks per run', 'Seeds'],
   [
@@ -354,22 +384,32 @@ body.push(mkTable(
     ['Ramp', 'Linear rise, plateau, linear fall', 'Synthetic (this work)', String(MAN.n_ticks_per_run), String(MAN.n_seeds)],
     ['Step', 'Single discontinuity at mid-run', 'Synthetic (this work)', String(MAN.n_ticks_per_run), String(MAN.n_seeds)],
     ['Sawtooth', 'Repeating linear rise, period 90 ticks', 'Synthetic (this work)', String(MAN.n_ticks_per_run), String(MAN.n_seeds)],
+    ['WC98/trace', `Recorded; whole trace peaks at ${f(100 * WC.peak_fraction_of_capacity, 0)} % of capacity`, 'WorldCup98 [11]', String(MAN.n_ticks_per_run), String(MAN.n_seeds)],
+    ['WC98/test', `Recorded; test split peaks at ${f(100 * WCT.peak_fraction_of_capacity, 0)} % of capacity`, 'WorldCup98 [11]', String(MAN.n_ticks_per_run), String(MAN.n_seeds)],
   ],
   [1700, 2600, 1900, 1100, 800], { left: true }));
-body.push(CAP('Table II. Workload families. All traces are generated by experiments/harness.py in the project '
-+ 'repository; none is a public trace. Every method sees the identical trace for a given family and seed.'));
+body.push(CAP('Table II. Workload families. The synthetic traces are generated by experiments/harness.py; the '
++ 'recorded ones are windows of the WorldCup98 test split, produced by experiments/make_real_traces.py from the '
++ 'archived logs. Seeds gives the count used in the main comparison; other experiments state their own. Every '
++ 'method sees the identical trace for a given family and seed.'));
 
-body.push(H2('E. Forecaster Bracketing'));
+body.push(H2('D. Forecasters and Bracketing'));
 body.push(P(
-  'The learned forecaster could not be executed: the environment has no package-index access and PyTorch is unavailable, '
-+ 'as are statsmodels and the deep baselines that depend on them. Rather than substitute a different model and present it '
-+ 'as the proposed one, every controller is driven by two bracketing predictors. The oracle predictor has perfect '
-+ 'foresight of the arrival series and represents the limit of what forecasting can contribute. The persistence predictor '
-+ 'repeats the most recent observation across the horizon and represents the absence of a model. Any real forecaster lies '
-+ 'between them. Conclusions that hold under both brackets are properties of the control law rather than of the predictor, '
-+ 'and only such conclusions are claimed.'));
+  'The controller consumes a forecast of utilisation and memory over its horizon, and three predictors supply it. The '
++ 'oracle has perfect foresight of the arrival series and represents the limit of what forecasting can contribute. '
++ 'Persistence repeats the most recent observation across the horizon and represents the absence of a model. These '
++ 'two brackets drive every experiment, so that a conclusion holding under both can be attributed to the control law '
++ 'rather than to the predictor.'));
+body.push(P(
+  `The third predictor is the temporal convolutional network of the forecasting module, trained on the arrival rate of `
++ `the recorded trace and frozen before any closed-loop run (Section V-Q). Its ${TCN.horizon}-step arrival forecast is converted `
++ 'to utilisation and memory by the same capacity law that converts the oracle’s, so the three predictors differ only '
++ 'in the arrival series they supply. The trained arm is used only on recorded traffic, where there is a training split '
++ 'to learn from, and not in the horizon sweeps, because the checkpoint’s horizon is fixed. As a forecaster it is '
++ 'compared against LSTM, GRU, bidirectional LSTM and Transformer baselines of matched size, an ARIMA model selected '
++ 'by AIC, and persistence, all scored on the same test origins.'));
 
-body.push(H2('F. Methods Compared'));
+body.push(H2('E. Methods Compared'));
 body.push(P(
   'Five decision mechanisms are compared. All receive identical telemetry, run at the same control interval, actuate '
 + 'through the same path, and are subject to the same pool bounds and rate limit; only the decision rule differs.'));
@@ -381,7 +421,7 @@ body.push(BUL('A reactive threshold controller implementing the HPA control law 
 + 'stabilisation window.'));
 body.push(BUL('A static configuration fixed at the level required to serve the peak of the trace.'));
 
-body.push(H2('G. Metrics and Statistics'));
+body.push(H2('F. Metrics and Statistics'));
 body.push(P(
   'Service-level violation rate is the fraction of ticks whose tail latency exceeds the objective. Over-provisioning '
 + 'ratio is the mean positive excess of the replica count over the requirement. Actuation churn is the number of ticks '
@@ -434,25 +474,32 @@ body.push(mkTable(
   ['Nₘₐₓ', 'Ticks where\ndecisions differ (%)', 'Churn, exact', 'Churn, rounded', 'Δ violation (pp)', 'Mean solve (ms)'],
   E3R.map(r => [String(r.n), f(r.dis, 1), f(r.ea, 1), f(r.ra, 1), f(r.dsla, 2), f(r.solve, 3)]),
   [900, 2100, 1500, 1600, 1500, 1500]));
-body.push(CAP('Table V. Integer-exact against relaxed-and-rounded control, by pool bound. Synthetic traces, five '
-+ 'families × five seeds per row. A positive Δ violation means the rounded controller violated more often.'));
+body.push(CAP(`Table V. Integer-exact against relaxed-and-rounded control, by pool bound. ${FAM_E3}, `
++ `${E3.filter(r => r.n_max === 2).length / uniq(E3).length} seeds each, pooled per row. A positive Δ violation means the rounded controller violated more often.`));
+const dslaLo = Math.min(...E3R.map(r => r.dsla)), dslaHi = Math.max(...E3R.map(r => r.dsla));
+const dslaArg = E3R.find(r => r.dsla === dslaHi);
+const fewer = E3R.filter(r => r.ea < r.ra), more = E3R.filter(r => r.ea >= r.ra);
+const orders = Math.floor(Math.log10(5000 / solveMax));
 body.push(P(
   `The two controllers disagree on a substantial and increasing fraction of ticks, from ${f(E3R[0].dis, 1)} % at the smallest `
-+ `pool to ${f(E3R[4].dis, 1)} % at the largest. The disagreement does not translate into a large difference in violation rate at `
-+ `this operating point — the mean difference ranges from ${f(Math.min(...E3R.map(r => r.dsla)), 2)} to `
-+ `${f(Math.max(...E3R.map(r => r.dsla)), 2)} percentage points — but it translates strongly into churn. At Nₘₐₓ = 16 the exact `
-+ `controller issues ${f(E3R[3].ea, 0)} scaling actions per run against ${f(E3R[3].ra, 0)} for the rounded controller, and at `
++ `pool to ${f(E3R[4].dis, 1)} % at the largest. Pooled over families, the rounded controller violates the service level more `
++ `often at ${E3R.filter(r => r.dsla > 0).length} of the ${E3R.length} pool bounds, by between ${f(dslaLo, 2)} and ${f(dslaHi, 2)} percentage points; `
++ `the largest gap is at Nₘₐₓ = ${dslaArg.n}, where one replica is a large share of the pool. Churn depends on the pool bound. `
++ `At Nₘₐₓ = 16 the exact controller issues ${f(E3R[3].ea, 0)} scaling actions per run against ${f(E3R[3].ra, 0)} for the rounded controller, and at `
 + `Nₘₐₓ = 32 the figures are ${f(E3R[4].ea, 0)} against ${f(E3R[4].ra, 0)}. Rounding converts a fractional preference into a `
 + 'full replica change, and because the fractional part fluctuates from tick to tick the rounded controller oscillates '
-+ 'where the exact controller holds.'));
++ `where the exact controller holds. ${fewer.length === E3R.length ? 'This holds at every pool bound.' : `It does not hold at Nₘₐₓ = ${series(more.map(r => r.n))}, `
++ `where the rounded controller issues fewer actions (${more.map(r => `${f(r.ra, 0)} against ${f(r.ea, 0)}`).join('; ')}); this experiment `
++ 'does not isolate why, so the churn advantage is claimed only for the larger pools.'}`));
 body.push(P(
-  `The cost of solving exactly is small. The enumeration completes in under ${f(solveMax, 2)} ms per tick at the largest pool `
-+ 'tested, which is three orders of magnitude inside the 5 s control interval. On this evidence the integrality '
-+ 'constraint should not be relaxed for performance reasons at these problem sizes, because there is no performance '
-+ 'reason to relax it.'));
+  `The cost of solving exactly is small. The mean solve time is at most ${f(solveMax, 2)} ms per tick, at the largest pool `
++ `tested, which is ${orders === 1 ? 'one order' : `${['zero', 'one', 'two', 'three', 'four'][orders]} orders`} of magnitude inside the 5 s control interval. `
++ 'This experiment, the solve-time sweep of Section V-H and the solver comparison of Section V-I were timed with no '
++ 'other experiment running on the machine. '
++ 'On this evidence the integrality constraint should not be relaxed for performance reasons at these problem sizes.'));
 body.push(img('fig_rounding_gap.png', 6.9));
 body.push(CAP('Fig. 4. Disagreement between the exact and rounded controllers, and the resulting actuation churn. '
-+ 'Synthetic traces.'));
++ `${FAM_E3}.`));
 
 body.push(H2('C. Operating-Point Sensitivity'));
 body.push(P(
@@ -468,8 +515,8 @@ body.push(mkTable(
     f(fr('reactive', u).sla_mean, 2), f(fr('reactive', u).over_mean, 1),
   ]),
   [1100, 1400, 1400, 1300, 1300, 1300, 1300]));
-body.push(CAP('Table VI. Service level and capacity cost against target utilisation. Synthetic traces, five families '
-+ '× three seeds per cell, oracle predictor.'));
+body.push(CAP(`Table VI. Service level and capacity cost against target utilisation. ${fams(MAN.workloads)}, `
++ `${fr('pact-oracle', 0.65).n_runs} runs per cell, oracle predictor.`));
 body.push(P(
   'The two controllers degrade very differently as the target is pushed up. The rounded controller is efficient and '
 + `adequate at conservative targets — at u* = 0.50 it violates on ${f(fr('rounded-oracle', 0.50).sla_mean, 2)} % of ticks while carrying only `
@@ -483,11 +530,11 @@ body.push(P(
 + `with capacity: at u* = 0.65 it carries ${f(fr('pact-oracle', 0.65).over_mean, 1)} % excess against the rounded controller’s `
 + `${f(fr('rounded-oracle', 0.65).over_mean, 1)} %, for a violation rate of ${f(fr('pact-oracle', 0.65).sla_mean, 2)} % against `
 + `${f(fr('rounded-oracle', 0.65).sla_mean, 2)} %. An operator who can tolerate the violation rate of the rounded controller should prefer it on cost. `
-+ 'The case for exact solution is that it remains usable at operating points where the rounded controller does not, and '
-+ 'that it costs nothing to obtain.'));
++ 'The case for exact solution is that it remains usable at operating points where the rounded controller does not; '
++ 'its computational cost is reported in Section V-H.'));
 body.push(img('fig_frontier.png', 3.35));
-body.push(CAP('Fig. 5. Attainable frontier as the target utilisation is swept from 0.50 to 0.85. Synthetic traces, '
-+ 'oracle predictor. Points are labelled with the target that produced them.'));
+body.push(CAP(`Fig. 5. Attainable frontier as the target utilisation is swept from 0.50 to 0.85. ${fams(MAN.workloads)}, `
++ `oracle predictor. Points are labelled with the target that produced them.`));
 
 body.push(H2('D. Aggregate Comparison and Significance'));
 body.push(P(
@@ -505,7 +552,7 @@ body.push(mkTable(
     ['Static over-provisioned', '—', `${f(st.sla_mean)} [${f(st.sla_ci_lo)}, ${f(st.sla_ci_hi)}]`, `${f(st.over_mean, 1)} [${f(st.over_ci_lo, 1)}, ${f(st.over_ci_hi, 1)}]`, f(st.act_mean, 1), f(st.util_mean, 1), f(st.cost_mean, 1)],
   ],
   [2000, 1300, 2300, 2300, 900, 1000, 1200], { left: false, size: 14 }));
-body.push(CAP(`Table VII. Main comparison. Synthetic traces, ${MAN.workloads.length} families × ${MAN.n_seeds} seeds = ${po.n_runs} runs per row. `
+body.push(CAP(`Table VII. Main comparison. ${FAM_E1}, ${MAN.n_seeds} seeds each = ${po.n_runs} runs per row. `
 + 'Intervals are 95 % bias-corrected bootstrap over 4000 resamples.'));
 
 const sigRows = [
@@ -527,52 +574,80 @@ body.push(mkTable(
   ]),
   [2600, 1600, 1100, 1000, 1200, 1100, 1200], { left: false, size: 14 }));
 body.push(CAP('Table VIII. Paired Wilcoxon signed-rank tests against the integer-exact controller with the oracle '
-+ 'predictor, Holm-corrected across the comparison family. n = 50 paired runs. Synthetic traces.'));
++ `predictor, Holm-corrected across the comparison family. n = ${sig('reactive', 'sla').n_pairs} paired runs. ${FAM_E1}.`));
+const isSig = r => r.p_holm !== '' && r.p_holm !== undefined && Number(r.p_holm) < 0.05;
+const slaR = sig('rounded-oracle', 'sla'), slaH = sig('reactive', 'sla');
 body.push(P(
   'Two aspects of Table VIII deserve emphasis because they qualify the paper’s claims. First, the difference in violation '
-+ `rate between the proposed controller and the rounded controller at this operating point is not significant after `
-+ `correction (p = ${f(sig('rounded-oracle', 'sla').p_holm, 3)}), and neither is the difference against the reactive baseline `
-+ `(p = ${f(sig('reactive', 'sla').p_holm, 3)}). The service-level advantage reported in Section V-C emerges at aggressive operating `
++ `rate between the proposed controller and the rounded controller at this operating point is ${isSig(slaR) ? '' : 'not '}significant after `
++ `correction (p = ${f(slaR.p_holm, 3)}), and the difference against the reactive baseline is ${isSig(slaH) ? '' : 'not '}significant either `
++ `(p = ${f(slaH.p_holm, 3)}). The service-level advantage reported in Section V-C emerges at aggressive operating `
 + 'points, not at the default one. Second, the differences that are significant are in churn and capacity: against the '
 + `rounded controller the reduction in churn has a Cliff’s delta of ${f(sig('rounded-oracle', 'act').cliffs_delta, 2)}, and against the reactive `
 + `baseline the reduction in over-provisioning has a delta of ${f(sig('reactive', 'over').cliffs_delta, 2)}. The robust claims are about stability `
 + 'and cost, not about service level in the ordinary regime.'));
+const keep = k => Math.sign(po[k] - ro[k]) === Math.sign(pp[k] - rp[k]);
+const ordered = ['sla_mean', 'over_mean', 'act_mean'].filter(keep);
 body.push(P(
-  'The forecaster brackets behave as intended and bound the predictor’s contribution. Moving from perfect foresight to '
-+ `persistence raises violations from ${f(po.sla_mean)} % to ${f(pp.sla_mean)} % and churn from ${f(po.act_mean, 0)} to ${f(pp.act_mean, 0)} actions, so a realistic `
-+ 'forecaster would land inside an interval of roughly a quarter of a percentage point in violation rate. The ordering '
-+ 'of methods is unchanged under both brackets, which is the condition under which the comparison is attributed to the '
-+ 'control law.'));
+  'The forecaster brackets bound the predictor’s contribution under this protocol. Moving from perfect foresight to '
++ `persistence changes violations from ${f(po.sla_mean)} % to ${f(pp.sla_mean)} % and churn from ${f(po.act_mean, 0)} to ${f(pp.act_mean, 0)} actions for the exact `
++ `controller, an interval of ${f(Math.abs(pp.sla_mean - po.sla_mean), 2)} percentage points in violation rate, and from ${f(ro.sla_mean)} % to `
++ `${f(rp.sla_mean)} % for the rounded one. The ordering of the exact and rounded controllers is the same under both brackets `
++ `for ${ordered.length} of the 3 metrics compared (violation, over-provisioning, churn), which is the condition under which `
++ 'a difference is attributed to the control law. Section V-Q tests the further assumption that a trained forecaster '
++ 'lands inside the bracket, and finds that it often does not.'));
 body.push(img('fig_trace.png', 6.9));
 body.push(CAP('Fig. 6. Replica count and tail latency on one burst trace. The rounded controller overshoots at each '
 + 'burst and the reactive controller holds capacity long after demand falls. Synthetic burst trace, seed 1001, oracle '
 + 'predictor.'));
 body.push(img('fig_main_comparison.png', 6.9));
-body.push(CAP(`Fig. 7. Main comparison with 95 % bootstrap intervals. Synthetic traces, ${po.n_runs} runs per bar.`));
+body.push(CAP(`Fig. 7. Main comparison with 95 % bootstrap intervals. ${FAM_E1}, ${po.n_runs} runs per bar.`));
 
-body.push(H2('E. Ablation'));
+body.push(H2('E.\u2003Ablation'));
+const E4R = B.csv('e4_ablation_runs.csv');
+const runsOf = (v, real) => E4R.filter(r => r.variant === v && REAL_FAMS.includes(r.workload) === real);
+const count = (rs, k) => ({ n: rs.length, on: rs.filter(r => Number(r[k]) > 0).length,
+                            total: rs.reduce((s, r) => s + Number(r[k]), 0) });
+const ovSyn = count(runsOf('full', false), 'overrides'), ovReal = count(runsOf('full', true), 'overrides');
+const gmSyn = count(runsOf('full', false), 'gamma_max'), gmReal = count(runsOf('full', true), 'gamma_max');
+const pAbl = v => abl(v).sla_p_raw;
+const gmPers = count(B.csv('e1_runs.csv').filter(r => r.method === 'pact-persist'), 'gamma_max');
+const nonSig = E4.filter(r => r.variant !== 'full' && Number(r.sla_p_raw) >= 0.05).length;
+const nAbl = E4.filter(r => r.variant !== 'full').length;
 body.push(P(
-  'Each component of the controller was disabled in turn, with everything else held fixed, over the same five workload '
-+ `families and ${MAN.n_seeds} seeds. Table IX reports the outcome and Fig. 8 shows it graphically. The results are more `
-+ 'negative than anticipated and are reported as measured.'));
+  'Each component of the controller was disabled in turn, with everything else held fixed, over '
++ `${FAM_E4.charAt(0).toLowerCase() + FAM_E4.slice(1)}, ${MAN.n_seeds} seeds each, with the oracle predictor. Table IX reports the outcome and Fig. 8 shows it. `
++ `No component changes the violation rate significantly: ${nonSig} of the ${nAbl} service-level comparisons have p ≥ 0.05 uncorrected. `
++ 'What the components change is how much capacity the controller holds and how often it moves.'));
 body.push(P(
   'Removing the optimisation layer entirely, so that the controller applies the first element of the demand trajectory '
-+ `directly, changes the violation rate by ${f(abl('no_mpc').sla_delta_vs_full, 2)} percentage points and reduces capacity cost by `
-+ `${f(Math.abs(abl('no_mpc').over_delta_vs_full), 1)} points. The change in service level is not significant `
-+ `(p = ${f(abl('no_mpc').sla_p_raw, 3)} uncorrected). Removing the churn penalty leaves service level essentially unchanged at `
++ `directly, changes the violation rate by ${f(abl('no_mpc').sla_delta_vs_full, 2)} percentage points (p = ${f(pAbl('no_mpc'), 3)}) and reduces `
++ `over-provisioning by ${f(Math.abs(abl('no_mpc').over_delta_vs_full), 1)} points. Removing the churn penalty changes service level by `
 + `${f(abl('no_churn').sla_delta_vs_full, 2)} points but raises over-provisioning by ${f(abl('no_churn').over_delta_vs_full, 1)} points and churn by `
-+ `${f(abl('no_churn').act_delta_vs_full, 0)} actions, which is the clearest single-component effect in the table and is consistent with the `
-+ 'rounding result of Section V-B: penalising change is what keeps the pool steady.'));
++ `${f(abl('no_churn').act_delta_vs_full, 0)} actions, consistent with the rounding result of Section V-B: penalising change is what keeps `
++ 'the pool steady.'));
 body.push(P(
-  'Two components had no measurable effect under these conditions and this should be stated plainly. Disabling cold-start '
-+ `compensation within the controller changed the violation rate by ${f(abl('no_coldstart').sla_delta_vs_full, 2)} points `
-+ `(p = ${f(abl('no_coldstart').sla_p_raw, 3)}), and disabling the adaptive margin changed nothing at all: the margin remained at its initial `
-+ 'value throughout every run, because the tracking error under both forecaster brackets never accumulated enough to move '
-+ 'the clipped integral. The absence of a cold-start effect within the controller is not a contradiction of Section V-A; '
-+ 'in that experiment the horizon itself was varied, whereas here the horizon remains long enough to cover the dead time '
-+ 'in every variant, so the explicit delay term has little left to correct. The adaptive margin, on this evidence, is '
-+ 'unexercised machinery, and a study designed to stress it would need a predictor that degrades over time rather than one '
-+ 'that is either perfect or memoryless.'));
+  'Disabling cold-start compensation, so that the controller plans as if a replica were ready the moment it is '
++ `requested, changes the violation rate by only ${f(abl('no_coldstart').sla_delta_vs_full, 2)} points (p = ${f(pAbl('no_coldstart'), 3)}), but it cuts `
++ `over-provisioning by ${f(Math.abs(abl('no_coldstart').over_delta_vs_full), 1)} points and churn by ${f(Math.abs(abl('no_coldstart').act_delta_vs_full), 1)} actions. `
++ 'An earlier version of this paper reported only the first of these and called the component ineffective; the '
++ 'capacity and churn effects were present in that version’s result files as well. The delay term makes the '
++ 'controller provision ahead of the dead time, and on these workloads, with a horizon that already covers the dead '
++ 'time, the measurements do not show a service-level return for the capacity it holds. This does not contradict '
++ 'Section V-A, where the horizon itself was varied.'));
+body.push(P(
+  `The two protective mechanisms behave differently. The adaptive margin moved in ${gmSyn.on} of ${gmSyn.n} synthetic runs `
++ `and ${gmReal.on} of ${gmReal.n} recorded runs of the full controller, and disabling it changes violations by `
++ `${f(abl('no_margin').sla_delta_vs_full, 2)} points and over-provisioning by ${f(abl('no_margin').over_delta_vs_full, 3)} points: under perfect `
++ 'foresight it is close to inert. It is not inert under persistence: in the main comparison it moved in '
++ `${gmPers.on} of ${gmPers.n} runs of the exact controller with the persistence predictor. `
++ `The safety ceiling, by contrast, is active: it issued ${ovSyn.total} overrides in ${ovSyn.on} of ${ovSyn.n} synthetic runs `
++ `and ${ovReal.total} in the ${ovReal.n} recorded runs. Removing it leaves the violation rate `
++ `${abl('no_safety').sla_delta_vs_full === 0 ? 'exactly unchanged' : `changed by ${f(abl('no_safety').sla_delta_vs_full, 2)} points`} `
++ `while lowering over-provisioning by ${f(Math.abs(abl('no_safety').over_delta_vs_full), 1)} points and churn by `
++ `${f(Math.abs(abl('no_safety').act_delta_vs_full), 1)} actions, so in these runs it bought capacity without a measured service-level `
++ 'return. An earlier version of this paper stated that the ceiling never activated; that was wrong for the main '
++ 'comparison and the ablation, and has been corrected.'));
 body.push(mkTable(
   ['Variant', 'Violation (%)', 'Δ vs. full (pp)', 'Over-prov. (%)', 'Δ vs. full (pp)', 'Churn', 'p (uncorr.)'],
   E4.filter(r => r.variant !== 'full').map(r => [
@@ -585,10 +660,10 @@ body.push(mkTable(
   ]),
   [2300, 1300, 1400, 1300, 1400, 900, 1200], { left: false, size: 14 }));
 body.push(CAP(`Table IX. Ablation. Full controller: violation ${f(abl('full').sla_mean, 2)} %, over-provisioning `
-+ `${f(abl('full').over_mean, 1)} %, churn ${f(abl('full').act_mean, 1)}. Synthetic traces, ${abl('full').n_runs} runs per row, oracle predictor. `
-+ 'No service-level delta reaches p < 0.05.'));
++ `${f(abl('full').over_mean, 1)} %, churn ${f(abl('full').act_mean, 1)}. ${FAM_E4}, ${abl('full').n_runs} runs per row, oracle predictor. `
++ `${nonSig === nAbl ? 'No service-level delta reaches p < 0.05.' : `${nAbl - nonSig} service-level delta(s) reach p < 0.05.`}`));
 body.push(img('fig_ablation.png', 6.9));
-body.push(CAP('Fig. 8. Effect of disabling each component. Synthetic traces.'));
+body.push(CAP(`Fig. 8. Effect of disabling each component. ${FAM_E4}.`));
 
 body.push(H2('F. Robustness to Forecast Corruption'));
 body.push(P(
@@ -596,7 +671,7 @@ body.push(P(
 + 'receive the true arrivals, sweeping the corruption magnitude and repeating the sweep with the safety ceiling disabled. '
 + 'Fig. 9 shows the result, which is counter-intuitive and worth stating carefully.'));
 body.push(P(
-  `Violation rate does not rise with corruption; it falls slightly, from ${f(noise0.sla_mean, 3)} % at zero noise to `
+  `Violation rate does not rise with corruption; ${noiseHi.sla_mean < noise0.sla_mean ? 'it falls slightly' : 'it stays level'}, from ${f(noise0.sla_mean, 3)} % at zero noise to `
 + `${f(noiseHi.sla_mean, 3)} % at σ = 0.4, while over-provisioning rises from ${f(noise0.over_mean, 1)} % to ${f(noiseHi.over_mean, 1)} %. `
 + 'The explanation is the asymmetric tracking weight of (8). Multiplicative noise causes the forecast to over-predict as '
 + 'often as it under-predicts, but the controller responds to over-prediction by adding capacity and to under-prediction '
@@ -605,12 +680,15 @@ body.push(P(
 + 'and it means the controller is not stress-tested by symmetric noise; a corruption model with sustained negative bias '
 + 'would be a sharper test and is left for future work.'));
 body.push(P(
-  `The safety ceiling never activated at any corruption level, so the two curves coincide exactly. The reactive baseline, `
-+ `measured on the same traces, violates on ${f(reRef.sla_mean, 2)} % of ticks, above every point of the swept range. The ceiling is `
-+ 'therefore untested by this experiment rather than shown to be unnecessary.'));
+  `${E7ovr.length ? `The safety ceiling issued overrides at ${E7ovr.length} of the ${E7on.length} corruption levels, ${E7ovr.reduce((a, r) => a + r.overrides_total, 0)} in total, `
+  + `but the violation rate with and without it is ${E7slaSame ? 'identical at every level' : 'different at some levels'}; only over-provisioning moves, by at most `
+  + `${f(Math.max(...E7on.map(r => Math.abs(r.over_mean - E7off(r.forecast_noise_sigma).over_mean))), 2)} points.` : 'The safety ceiling never activated at any corruption level, so the two curves coincide exactly.'} `
++ `The reactive baseline, measured on the same traces, violates on ${f(reRef.sla_mean, 2)}\u202f% of ticks, `
++ `${E7on.every(r => r.sla_mean < reRef.sla_mean) ? 'above every point of the swept range' : 'inside the swept range'}. Symmetric noise does not `
++ 'produce the sustained under-prediction the ceiling exists to catch, so this experiment does not show what it is worth.'));
 body.push(img('fig_robustness.png', 3.35));
 body.push(CAP('Fig. 9. Violation rate against forecast corruption, with and without the safety ceiling. Synthetic '
-+ 'traces, three families × four seeds per point.'));
++ `traces (burst, step and diurnal), ${noise0.n_runs} runs per point.`));
 
 // ===== VI. Limitations
 SEC.sensitivity.forEach(e => body.push(e));        // V-G
@@ -623,6 +701,7 @@ SEC2.predictorQuality.forEach(e => body.push(e));  // V-M
 SEC.guidance.forEach(e => body.push(e));           // V-N
 SEC3.inferenceTrace.forEach(e => body.push(e));    // V-O
 SEC2.positioning.forEach(e => body.push(e));       // V-P
+SEC4.section.forEach(e => body.push(e));           // V-Q
 SEC2.discussion.forEach(e => body.push(e));        // VI
 
 body.push(H1('VII. Limitations and Threats to Validity'));
@@ -633,22 +712,39 @@ body.push(P(
 + 'several of them bound the claims directly.'));
 body.push(RUNS([{ t: 'Simulated plant only. ', b: true }, { t:
   'No result in this paper was obtained on real containers. The plant is the analytical queueing simulator described in '
-+ 'Section IV-A, and the cold-start interval is a parameter of that simulator rather than a measurement. Image pull '
++ 'Sections IV-A and IV-B, and the cold-start interval is a parameter of that simulator rather than a measurement. Image pull '
 + 'variance, scheduler interference, connection draining and load-balancer registration delay are all absent. The '
 + 'horizon–dead-time law of Section V-A is a property of the model as much as of the controller, and confirming it on a '
 + 'real Docker deployment is the single most important piece of outstanding work.' }]));
-body.push(RUNS([{ t: 'Synthetic workloads. ', b: true }, { t:
-  'The five trace families are generated, not recorded. Public traces could not be retrieved because the environment has '
-+ 'no network access. Real traffic has heavier tails and non-stationarity that these traces do not reproduce.' }]));
-body.push(RUNS([{ t: 'The learned forecaster was not executed. ', b: true }, { t:
-  'PyTorch is unavailable in the environment and could not be installed, so the temporal convolutional forecaster, and '
-+ 'the recurrent and attention-based baselines that would be compared against it, were not run. The bracketing protocol '
-+ 'of Section IV-C bounds the effect of this substitution but does not eliminate it: no claim about forecasting accuracy '
-+ 'is made anywhere in this paper, and the comparison against statistical and deep forecasting baselines remains '
-+ 'outstanding. For the same reason the ARIMA baseline, which requires statsmodels, was not run.' }]));
-body.push(RUNS([{ t: 'Two mechanisms are unexercised. ', b: true }, { t:
-  'The adaptive margin never moved from its initial value and the safety ceiling never activated. Both are implemented '
-+ 'and both are inert under the conditions tested. They should be regarded as untested rather than validated.' }]));
+body.push(RUNS([{ t: 'One recorded trace, rescaled. ', b: true }, { t:
+  `Five of the seven workload families are generated rather than recorded. The two recorded families are one trace, `
++ `days ${PROV.worldcup98.subset.days[0]}–${PROV.worldcup98.subset.days[1]} of the WorldCup98 log, at two scalings, and a scaling preserves the shape of the traffic `
++ 'but not its absolute level: real request rates were divided by a constant to fit a sixteen-replica pool, so the '
++ 'per-replica variability is not that of the original servers. The second scaling was chosen from the peak of the '
++ 'test split, which uses one statistic of the test data; the forecaster’s inputs are standardised with training '
++ 'statistics, under which a constant factor cancels, but the choice of operating point is not blind. The test split '
++ 'is a single weekend, the trace contains a short dip at each local midnight that was left unrepaired, and a second '
++ 'recorded source (Bitbrains GWA-T-12) was located but not used because it records per-machine utilisation at '
++ 'five-minute intervals rather than request arrivals.' }]));
+body.push(RUNS([{ t: 'The start state was changed after a diagnosis. ', b: true }, { t:
+  'Runs originally opened with four replicas. On recorded windows that placed every violation in the start-up '
++ 'transient, so the rule was changed to the larger of four and the first tick’s requirement and every experiment '
++ 'was re-run (Section V-Q). The change was made before any trained-arm result existed and applies to every '
++ 'workload, but it is a change of protocol made after looking at data, and it is reported as one.' }]));
+body.push(RUNS([{ t: 'One forecaster, trained once. ', b: true }, { t:
+  `The trained forecaster is a single TCN checkpoint from one seed, and each baseline was also trained once, so the `
++ `ranking in Table XIX carries no estimate of training variance. The TCN ranked ${SEC4.tcnRank} of ${SEC4.atH.length} on accuracy at the `
++ `full horizon, behind ${SEC4.MNAME[SEC4.best.m]}; a better-tuned model might change where the trained arm falls relative to `
++ `the brackets. It was trained on the ${String(TCN.train_device).toUpperCase()} device of one workstation and evaluated on its CPU. The trained arm appears only `
++ 'in the comparison of Table XX: the horizon sweeps and the corruption sweep use the oracle, because the checkpoint '
++ 'has a fixed horizon and because those experiments isolate the controller by design.' }]));
+body.push(RUNS([{ t: 'Two mechanisms are only partly tested. ', b: true }, { t:
+  `An earlier version of this paper stated that the adaptive margin never moved and the safety ceiling never activated. `
++ `Both statements were wrong. The margin moves under every imperfect predictor tested (Sections V-E and V-Q), and the ceiling `
++ `fired in the main comparison, the ablation and the corruption sweep. ${SEC4.E22_SLA_HELPS.length
+  ? `Their value is established only narrowly: disabling them raised the violation rate significantly in ${SEC4.E22_SLA_HELPS.length} of the cases in Table XXIII, and in no case in Table IX`
+  : `What remains untested is their value: no experiment here shows either one improving the service level significantly${E22_EXISTS ? ', including the ablation under imperfect predictors in Table XXIII' : ''}`}, `
++ 'and the corruption model is symmetric, so it never produces the sustained under-prediction the ceiling exists to catch.' }]));
 body.push(RUNS([{ t: 'Censored latency. ', b: true }, { t:
   'The heavy-traffic approximation diverges when offered load exceeds pool capacity. Such ticks are censored at a finite '
 + 'ceiling, which compresses the upper tail of the latency distribution and makes the reported mean latency a lower '
@@ -673,8 +769,10 @@ body.push(P(
 + `${f(meanBelow)} % to ${f(meanAbove)} % as the horizon crossed HΔt = τc, and below that boundary the predictive controller performed `
 + `worse than a reactive baseline by up to ${f(Math.abs(worstNeg))} percentage points. Horizon selection is therefore not a tuning preference `
 + 'but a feasibility condition, and it can be checked before deployment from a single measurement of cold-start '
-+ 'latency. This is the firmest of the three results: the transition appeared at every cold-start setting tested and '
-+ 'landed where the inequality predicts rather than at a fixed horizon.'));
++ 'latency. This is the firmest of the three results on the synthetic families: the transition appeared at every '
++ 'cold-start setting tested and landed where the inequality predicts rather than at a fixed horizon. On the recorded '
++ 'traffic at the scalings used, the reactive baseline never violated, so the transition could not be tested there '
++ '(Section V-Q).'));
 body.push(P(
   'The integer problem does not have to be approximated. Dead time confines the tracking-relevant decisions to the '
 + `first H − τ + 1 steps of the horizon and leaves the rest separable, which reduced the search to ${E15.paper_config.m} nested integer `
@@ -682,27 +780,29 @@ body.push(P(
 + 'states small enough to enumerate exhaustively, which is a verification rather than a proof but a stronger warrant '
 + 'than the argument it replaces. Completing the horizon greedily instead, a device sometimes called exact on the '
 + `grounds that only the first action is applied, returned an optimal first action in only ${E15.validation.greedy_first_action_optimal} of those `
-+ `${E15.validation.cases} states, and at the paper configuration differed from the optimum on ${f(100.0 - E15.paper_config.agree_pct, 2)} % of the plant states drawn, `
++ `${E15.validation.cases} states, and at the paper configuration differed from the optimum on ${f(100.0 - E15.paper_config.agree_pct, 2)} % of the plant states drawn, `
 + 'always in the direction of higher cost.'));
 body.push(P(
   `Relaxing the integrality of the scaling decision changes behaviour measurably. The relaxed controller disagreed with `
 + `the exact one on ${f(E3R[0].dis, 1)} to ${f(E3R[4].dis, 1)} % of control ticks, issued up to ${(E3R[4].ra / E3R[4].ea).toFixed(1)} times as many scaling actions, and `
 + `degraded from ${f(fr('rounded-oracle', 0.50).sla_mean, 2)} % to ${f(fr('rounded-oracle', 0.85).sla_mean, 2)} % violations as the utilisation target was raised, against `
 + `${f(fr('pact-oracle', 0.50).sla_mean, 2)} % to ${f(fr('pact-oracle', 0.85).sla_mean, 2)} % for the exact controller. Exact solution cost at most `
-+ `${f(solveMax, 2)} ms per tick, ${f(solveMax / 50.0, 2)} % of the control interval, so relaxation buys compute that is not scarce `
++ `${f(solveMax, 2)} ms per tick, ${f(solveMax / 50.0, 2)} % of the control interval, so relaxation buys compute that is not scarce `
 + 'at these problem sizes. That is a claim about this configuration rather than a general one: the exact solve is '
 + 'cheap here because the dead time is long relative to the horizon, and a pool with near-instant start-up and a '
 + 'long horizon would not enjoy the same reduction.'));
 body.push(P(
   'The results also qualify the approach. At the default operating point the exact controller did not significantly '
 + 'reduce violations relative to either the rounded or the reactive baseline, and it carried more capacity than the '
-+ 'rounded controller to achieve the service level it did. Its measured advantages are in actuation stability and in '
-+ 'graceful degradation at aggressive operating points. Two of its components, the adaptive margin and the safety '
-+ 'ceiling, were inert throughout.'));
++ 'rounded controller to achieve the service level it did. Its measured advantages are in actuation stability at the '
++ 'larger pool bounds and in graceful degradation at aggressive operating points. Its adaptive margin and safety ceiling '
++ 'are active, contrary to an earlier version of this paper, but no experiment here establishes that either improves the '
++ `service level${SEC4.E22_SLA_HELPS.length ? ' outside the cases listed in Table XXIII' : ''}, and its dead-time term costs capacity without a measured service-level return.`));
 body.push(P(
   'The immediate priorities for further work follow from Section VII: reproducing the horizon–dead-time transition on a '
-+ 'real Docker deployment with a measured cold-start interval, repeating the comparison with a trained forecaster in '
-+ 'place of the brackets, and designing a corruption model with sustained bias that would actually exercise the margin '
++ 'real Docker deployment with a measured cold-start interval; repeating the trained-forecaster comparison with several '
++ 'training seeds, several model families and more than one recorded trace; identifying what in the trained forecast '
++ 'damps the rounded controller; and designing a corruption model with sustained bias that would exercise the margin '
 + 'adaptation and the safety ceiling.'));
 
 // ===== References
@@ -718,6 +818,7 @@ const refs = [
   'F. Meng et al., "CATScaler: A convolution-augmented transformer scaling framework for cloud-native applications," IEEE Trans. Services Computing, 2025.',
   'Z. Fang, H. Ma, G. Chen, and R. Buyya, "HGraphScale: Hierarchical graph learning for autoscaling microservice applications in container-based cloud computing," IEEE Trans. Services Computing, 2025.',
   'B. Kumar, A. Verma, and R. Buyya, "Predictive autoscaling in cloud-native and federated cloud-edge computing environments: A taxonomy and future directions," arXiv:2606.07046, 2026.',
+  `${PROV.worldcup98.attribution.replace(/\.$/, '')}.`,
 ];
 refs.forEach((r, i) => body.push(new Paragraph({
   alignment: AlignmentType.JUSTIFIED,
@@ -729,9 +830,9 @@ refs.forEach((r, i) => body.push(new Paragraph({
 const archWide = [
   img('fig_architecture.png', 6.95),
   CAP('Fig. 1.\u2003Implemented pipeline. Each block names the repository module that realises it. '
-    + 'Dashed outlines mark components that exist in the repository but were not exercised in this '
-    + 'evaluation: the learned forecaster (PyTorch unavailable) and the Docker actuation backend '
-    + '(no daemon available). Bold labels are component names.'),
+    + 'The dashed outline marks the one component that exists in the repository but was not exercised '
+    + 'in this evaluation: the Docker actuation backend (no daemon available). The forecaster block is '
+    + 'the trained TCN on recorded traffic and the two bracketing predictors everywhere. Bold labels are component names.'),
 ];
 
 // ---------------------------------------------------------------- document

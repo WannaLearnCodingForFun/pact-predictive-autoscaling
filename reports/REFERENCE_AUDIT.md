@@ -119,6 +119,26 @@ retrieval, so the venue could not be confirmed. The entry had no venue to
 begin with; it is now explicitly marked "preprint" rather than left looking
 like a journal paper with a missing field.
 
+## Reference [11] — WorldCup98 access logs (added with the recorded-trace revision)
+
+**M. Arlitt and T. Jin, "1998 World Cup Web Site Access Logs", August 1998.
+Available at http://www.acm.org/sigcomm/ITA/.**
+
+- Source: the dataset's landing page in the Internet Traffic Archive,
+  `https://ita.ee.lbl.gov/html/contrib/WorldCup.html`, read on 2026-11-05.
+  The page states the form above as the required "reference or attribution"
+  for publications based on the logs, and the entry is copied from it
+  verbatim rather than reformatted.
+- The landing page also states the licence: the logs may be used and
+  redistributed freely as long as the Copyright and Disclaimer travel
+  unmodified, and the tools are licensed for non-commercial use. The notice
+  is kept verbatim in `data/WORLDCUP98_COPYRIGHT.txt`.
+- The ITA asks for a copy of any publication based on the logs. That request
+  is noted in `data/README.md`; whether to send one is the author's decision.
+
+Bitbrains GWA-T-12 was located and verified (`data/README.md`) but is not
+used, so its citation does not appear in the bibliography.
+
 ## What this audit is not
 
 This is source verification, not a similarity check. It says nothing about

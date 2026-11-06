@@ -326,10 +326,12 @@ def solve_mpc_exact(
         ):
             best_cost, best_u0, best_next = total, u, (n_next, pipe_next)
 
-    if best_u0 is not None:
+    if best_u0 is not None and best_next is not None:
         # Walk the argmin forward for reporting; the cost is already final.
         mid: list[int] = []
-        n, pipe, prev_u = (*best_next, best_u0)  # type: ignore[misc]
+        n: int = best_next[0]
+        pipe: tuple[int, ...] = best_next[1]
+        prev_u: int = best_u0
         for depth in range(1, m):
             dk = demand_h[depth]
             committed = committed_of(n, pipe, tau)

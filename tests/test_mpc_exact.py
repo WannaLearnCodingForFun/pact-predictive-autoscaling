@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import itertools
 import random
+from collections.abc import Sequence
+from typing import Any
 
 from pact.config import (
     CapacityConfig,
@@ -33,8 +35,9 @@ from pact.control.mpc_exact import (
 TOL = 1e-6
 
 
-def _cfg(*, dt=5.0, horizon=4, tau_c_s=10.0, delta_max=2, n_min=1, n_max=8,
-         r=0.15, s=0.60, q_up=8.0, q_down=1.0) -> PactConfig:
+def _cfg(*, dt: float = 5.0, horizon: int = 4, tau_c_s: float = 10.0,
+         delta_max: int = 2, n_min: int = 1, n_max: int = 8, r: float = 0.15,
+         s: float = 0.60, q_up: float = 8.0, q_down: float = 1.0) -> PactConfig:
     return PactConfig(
         telemetry=TelemetryConfig(dt=dt),
         forecast=ForecastConfig(horizon=horizon),
@@ -48,14 +51,18 @@ def _cfg(*, dt=5.0, horizon=4, tau_c_s=10.0, delta_max=2, n_min=1, n_max=8,
     )
 
 
-def _brute_force(n, demand, pending, last_u, cfg):
+def _brute_force(
+    n: int, demand: Sequence[int], pending: Sequence[int], last_u: int,
+    cfg: PactConfig,
+) -> tuple[float, set[int]]:
     ctrl = cfg.control
     tau = cold_start_ticks(ctrl.tau_c_s, cfg.telemetry.dt)
     horizon = min(len(demand), cfg.forecast.horizon)
     pipe = _pending_of_length(pending, _pipe_len(tau))
     dem = [int(x) for x in demand[:horizon]]
     us = list(range(-ctrl.delta_max, ctrl.delta_max + 1))
-    best, best_us = float("inf"), set()
+    best: float = float("inf")
+    best_us: set[int] = set()
     for plan in itertools.product(us, repeat=horizon):
         c = plan_cost(n, pipe, plan, dem, last_u, tau, ctrl)
         if c is None:
@@ -67,7 +74,7 @@ def _brute_force(n, demand, pending, last_u, cfg):
     return best, best_us
 
 
-CASES = [
+CASES: list[dict[str, Any]] = [
     dict(horizon=4, tau_c_s=10.0, delta_max=2, n_min=1, n_max=8),
     dict(horizon=5, tau_c_s=10.0, delta_max=2, n_min=1, n_max=8),
     dict(horizon=4, tau_c_s=20.0, delta_max=2, n_min=1, n_max=8),
@@ -78,7 +85,7 @@ CASES = [
 ]
 
 
-def test_matches_brute_force():
+def test_matches_brute_force() -> None:
     """Exhaustive check of global optimality across both dead-time regimes."""
     rng = random.Random(20261030)
     checked = 0
@@ -110,7 +117,7 @@ def test_matches_brute_force():
     assert checked >= 60, f"only {checked} cases were feasible"
 
 
-def test_truncation_count():
+def test_truncation_count() -> None:
     """m = max(1, H - lag + 1), with lag = 1 when tau <= 1."""
     assert landing_lag(0) == 1
     assert landing_lag(1) == 1
@@ -121,7 +128,7 @@ def test_truncation_count():
     assert tracking_relevant_actions(4, 20) == 1  # never below one
 
 
-def test_tail_is_not_all_zero():
+def test_tail_is_not_all_zero() -> None:
     """With s > 0 the cost-optimal tail ramps down rather than snapping to 0.
 
     This is the property the greedy completion violates, so it is worth
@@ -136,7 +143,7 @@ def test_tail_is_not_all_zero():
     assert ramp < zero_tail, f"ramp {ramp} should beat zero tail {zero_tail}"
 
 
-def test_never_worse_than_greedy_completion():
+def test_never_worse_than_greedy_completion() -> None:
     """The exact objective is never above the greedy-completion objective."""
     cfg = _cfg(horizon=12, tau_c_s=45.0, delta_max=4, n_min=1, n_max=16)
     ctrl = cfg.control
@@ -166,7 +173,7 @@ def test_never_worse_than_greedy_completion():
     assert compared >= 30
 
 
-def test_respects_rate_limit_and_pool_bounds():
+def test_respects_rate_limit_and_pool_bounds() -> None:
     cfg = _cfg(horizon=12, tau_c_s=45.0, delta_max=4, n_min=1, n_max=16)
     tau = cold_start_ticks(cfg.control.tau_c_s, cfg.telemetry.dt)
     pipe = [0] * _pipe_len(tau)
@@ -177,7 +184,7 @@ def test_respects_rate_limit_and_pool_bounds():
     assert 1 <= 1 + got.u <= 16
 
 
-def test_plan_length_matches_horizon():
+def test_plan_length_matches_horizon() -> None:
     cfg = _cfg(horizon=12, tau_c_s=45.0, delta_max=4, n_min=1, n_max=16)
     tau = cold_start_ticks(cfg.control.tau_c_s, cfg.telemetry.dt)
     pipe = [0] * _pipe_len(tau)

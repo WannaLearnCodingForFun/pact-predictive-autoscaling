@@ -42,7 +42,7 @@ def _csv(path: Path, rows: list[dict]) -> None:
     print(f"  wrote {path.name} ({len(rows)} rows)")
 
 
-def sweep(label: str, mutate, values, n_seeds=SEEDS, method="pact"):
+def sweep(label: str, mutate, values, n_seeds=SEEDS, method="pact", solver="auto"):
     """Run one control-parameter sweep across all workloads."""
     rows = []
     for v in values:
@@ -52,7 +52,8 @@ def sweep(label: str, mutate, values, n_seeds=SEEDS, method="pact"):
             for seed in range(n_seeds):
                 lam = workload(wl, N_TICKS, 7000 + seed)
                 s = summarise(run_controller(method=method, lam=lam, cfg=cfg,
-                                             forecaster_kind="oracle"), cfg)
+                                             forecaster_kind="oracle",
+                                             solver=solver), cfg)
                 acc["sla"].append(s["sla_violation_pct"])
                 acc["over"].append(s["over_provision_pct"])
                 acc["act"].append(s["scale_actions"])
@@ -186,6 +187,7 @@ def e12_coldstart() -> None:
         cfg = base_config(tau_c_s=tau, horizon=30)   # 150 s lookahead covers all
         for m in ("pact", "rounded", "reactive"):
             acc = {"sla": [], "over": [], "act": []}
+            exact: list[float] = []
             for wl in ("burst", "step", "ramp"):
                 for seed in range(5):
                     lam = workload(wl, N_TICKS, 7800 + seed)
@@ -194,7 +196,10 @@ def e12_coldstart() -> None:
                     acc["sla"].append(s["sla_violation_pct"])
                     acc["over"].append(s["over_provision_pct"])
                     acc["act"].append(s["scale_actions"])
-            rec = {"tau_c_s": tau, "method": m, "n_runs": len(acc["sla"])}
+                    exact.append(s["exact_tick_pct"])
+            rec = {"tau_c_s": tau, "method": m, "n_runs": len(acc["sla"]),
+                   "exact_tick_pct": (round(float(np.mean(exact)), 4)
+                                      if m == "pact" else "")}
             for k, vals in acc.items():
                 a = np.asarray(vals, dtype=float)
                 rec[f"{k}_mean"] = round(float(a.mean()), 4)

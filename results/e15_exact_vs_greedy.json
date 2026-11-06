@@ -3,7 +3,7 @@
     "cases": 400,
     "exact_attains_optimum": 400,
     "greedy_first_action_optimal": 354,
-    "greedy_excess_mean": 7.968375000000001,
+    "greedy_excess_mean": 7.968375000000005,
     "greedy_excess_max": 192.80000000000007
   },
   "paper_config": {
@@ -19,13 +19,13 @@
     "greedy_better": 0,
     "cost_excess_mean": 1.9696666666667575,
     "cost_excess_max": 31.799999999999997,
-    "rel_excess_mean_pct": 1.1484917782795099,
+    "rel_excess_mean_pct": 1.1484917782795085,
     "rel_excess_max_pct": 99.53051643192487,
-    "exact_p50_ms": 18.081490001350176,
-    "exact_p95_ms": 23.71899700301583,
-    "exact_max_ms": 39.44378400046844,
-    "greedy_p50_ms": 0.25263300267397426,
-    "greedy_p95_ms": 0.3746530019270722,
-    "greedy_max_ms": 2.4934029970609117
+    "exact_p50_ms": 15.174583008047193,
+    "exact_p95_ms": 19.664709019707516,
+    "exact_max_ms": 34.254707978107035,
+    "greedy_p50_ms": 0.273290992481634,
+    "greedy_p95_ms": 0.33891701605170965,
+    "greedy_max_ms": 0.9029159846249968
   }
 }

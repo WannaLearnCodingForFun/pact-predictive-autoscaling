@@ -1,27 +1,18 @@
 """Build results/e8_solver_compare.csv: the churn sweep under both solvers.
 
-The E8 sweep was first run with the greedy-completion solver and then again,
-unchanged in every other respect, with the exact one. Same workloads, same
-seeds, same configuration; only the solver differs. That makes the pair a
-controlled comparison of what approximating the solve does to a tuning
-conclusion, which is worth reporting separately from the sweep itself.
+The E8 churn-weight sweep is run twice, unchanged in every respect except the
+integer solver: once with the exact solver (results/e8_parts/) and once with
+the enumerate-then-complete-greedily solver (results/e8_solver_greedy/, from
+``run_stage.py e8:churn_weight_s@greedy``). Same workloads, same seeds, same
+start state and configuration, so the pair is a controlled comparison of what
+approximating the solve does to a tuning conclusion.
 
-It matters here because the greedy numbers say something the exact numbers
-do not: that raising the churn weight to unity drives violations to
-0.013 %, and holds them there. Under the exact solver the same sweep sits
-near 0.58 %. The qualitative reading is unchanged -- raising s improves
-service level, capacity and oscillation together -- but the size of the
-effect was an artifact of the solver, not a property of the controller.
+The mechanism the comparison probes is the one Section III-E describes.
+Greedy completion zeroes the tail of the horizon, and a zero tail misprices
+exactly the term the churn weight scales, so the two solvers can be expected
+to diverge most where s is large.
 
-The mechanism is the one Section III-E describes. Greedy completion zeroes
-the tail of the horizon, and a zero tail misprices exactly the term the
-churn weight scales: from u(t+m-1) = 4 the all-zero tail costs 9.60 against
-4.35 for a ramp-down. Raising s magnifies that mispricing, so the greedy
-solver's behaviour diverges from the objective it is nominally minimising
-precisely where s is large.
-
-Reads the archived greedy run from results_greedy_backup/ and the exact
-sweep from results/e8_parts/. Writes nothing if either is absent.
+Writes nothing if either input is absent.
 """
 
 from __future__ import annotations
@@ -33,7 +24,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "results"
-BACKUP = ROOT / "results_greedy_backup" / "e8_sensitivity.csv"
+GREEDY = RESULTS / "e8_solver_greedy" / "churn_weight_s.json"
 PART = RESULTS / "e8_parts" / "churn_weight_s.json"
 OUT = RESULTS / "e8_solver_compare.csv"
 
@@ -45,15 +36,11 @@ FIELDS = ["parameter", "value",
 
 
 def main() -> int:
-    if not BACKUP.exists() or not PART.exists():
-        print(f"missing input: {BACKUP if not BACKUP.exists() else PART}")
+    if not GREEDY.exists() or not PART.exists():
+        print(f"missing input: {GREEDY if not GREEDY.exists() else PART}")
         return 1
 
-    greedy = {
-        float(r["value"]): r
-        for r in csv.DictReader(BACKUP.open())
-        if r["parameter"] == "churn_weight_s"
-    }
+    greedy = {float(r["value"]): r for r in json.loads(GREEDY.read_text())}
     exact = json.loads(PART.read_text())
 
     rows = []
@@ -62,6 +49,9 @@ def main() -> int:
         g = greedy.get(v)
         if g is None:
             continue
+        if int(g["n_runs"]) != int(e["n_runs"]):
+            print(f"run counts differ at s = {v}: {g['n_runs']} vs {e['n_runs']}")
+            return 1
         rows.append({
             "parameter": "churn_weight_s", "value": v,
             "exact_sla": round(float(e["sla_mean"]), 4),
@@ -92,4 +82,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())

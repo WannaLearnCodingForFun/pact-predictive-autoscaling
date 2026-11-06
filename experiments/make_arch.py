@@ -72,7 +72,7 @@ band(2, 2.0, 114, 14.5, "ENFORCEMENT")
 
 # ---------------- plant
 box(5, 45.0, 23, 10.5, "Workload Generator",
-    "five synthetic arrival traces\ndiurnal, burst, ramp, step, sawtooth",
+    "five synthetic families + WorldCup98\n(recorded, two scalings)",
     "experiments/harness.py", PLANT)
 box(31, 45.0, 25, 10.5, "Pool Simulator",
     "M/G/c queue, cold-start delay\nKingman p95 (Eq. 4)",
@@ -81,8 +81,8 @@ box(59, 45.0, 25, 10.5, "M1  Telemetry",
     "observation vector (Eq. 1)\nu, r, λ, p95, N",
     "pact/telemetry/collector.py", PLANT)
 box(87, 45.0, 26, 10.5, "M2  Forecaster",
-    "oracle / persistence brackets\nTCN not run: torch unavailable",
-    "pact/forecast/tcn.py", PLANT, dashed=True)
+    "trained TCN on arrival rate,\nbracketed by oracle / persistence",
+    "pact/forecast/tcn.py", PLANT)
 
 arrow((28, 50.2), (31, 50.2), color=PLANT)
 arrow((56, 50.2), (59, 50.2), color=PLANT)

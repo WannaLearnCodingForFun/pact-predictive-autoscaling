@@ -85,7 +85,7 @@ const moduleDetail = [
 
 // ---------------------------------------------------------- plant model
 const plantDetail = [
-  H2('C. Plant Model'),
+  H2('B. Plant Model'),
   P('The simulated plant is the component that determines how far these results transfer, so its '
   + 'assumptions are stated explicitly rather than left to the source.'),
   P('The pool maintains two sets, ready replicas and pending replicas. An action that adds capacity '
@@ -169,6 +169,13 @@ const inferenceTrace = [
 module.exports.inferenceTrace = inferenceTrace;
 
 // ---------------------------------------------------------- validity framing
+const E3V = require('./build_paper.js').E3;
+const disBy = [...new Set(E3V.map(r => r.n_max))].map(n => {
+  const rs = E3V.filter(r => r.n_max === n);
+  return rs.reduce((a, r) => a + r.disagree_pct, 0) / rs.length;
+});
+const disLo = Math.min(...disBy), disHi = Math.max(...disBy);
+
 const validity = [
   H2('A. Construct Validity'),
   P('Construct validity asks whether the quantities measured correspond to the properties claimed. '
@@ -178,7 +185,7 @@ const validity = [
   + 'objective. Real service-level objectives are evaluated over windows and against measured '
   + 'request latencies, not over control ticks against a queueing approximation. A controller that '
   + 'performs well on this construct would perform well on the real one only to the extent the '
-  + 'approximation holds, which Section IV-C argues it does in the moderate-utilisation regime and '
+  + 'approximation holds, which Section IV-B argues it does in the moderate-utilisation regime and '
   + 'does not near saturation, where the measure is censored.'),
   P('The ground-truth replica requirement, used by both the decision classification of Section V-L '
   + 'and the excess column of Table XVII, is computed from the instantaneous arrival rate. It '
@@ -199,8 +206,9 @@ const validity = [
   + 'that sweep rather than from the aggregate table.'),
   H2('C. External Validity'),
   P('External validity asks how far the results transfer, and it is where this evaluation is '
-  + 'weakest. The plant is simulated, the workloads are synthetic, the learned forecaster was never '
-  + 'run, and a single replica pool was controlled. Each is enumerated in the following subsection '
+  + 'weakest. The plant is simulated; five of the seven workload families are synthetic and the other two '
+  + 'are rescaled copies of one recorded trace; one forecaster was trained, once; and a single replica pool '
+  + 'was controlled. Each is enumerated in the following subsection '
   + 'with the specific claim it bounds.'),
   P('One form of transfer is better supported than the others. The horizon condition of (6) is a '
   + 'statement about the relationship between two latencies, and the experiment confirms the '
@@ -208,8 +216,8 @@ const validity = [
   + 'that tracks a parameter in this way is more likely to transfer than one that holds only at the '
   + 'values tested, because the mechanism rather than the magnitude is what has been identified. '
   + 'The integrality result is in the opposite position: the magnitude of the rounding gap depends '
-  + 'on pool size, demand volatility and the operating point, and Table V shows it varying by more '
-  + 'than a factor of three across pool sizes alone.'),
+  + 'on pool size, demand volatility and the operating point, and Table V shows the share of ticks on which '
+  + `the two controllers disagree varying by a factor of ${(disHi / disLo).toFixed(1)} across pool sizes alone.`),
 ];
 
 module.exports.validity = validity;

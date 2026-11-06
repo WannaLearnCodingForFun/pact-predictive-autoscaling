@@ -23,7 +23,7 @@ import math
 import time
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Callable, Protocol, Sequence
+from typing import Any, Callable, Protocol, Sequence
 
 import logging
 
@@ -90,6 +90,8 @@ def base_config(
 # ----------------------------------------------------------------- workloads
 def workload(kind: str, n: int, seed: int) -> np.ndarray:
     """Arrival-rate trace in requests/s. Deterministic given (kind, n, seed)."""
+    if kind in REAL_WORKLOADS:
+        return real_window(kind, n, seed)[0]
     rng = np.random.default_rng(seed)
     t = np.arange(n)
     if kind == "diurnal":
@@ -110,10 +112,63 @@ def workload(kind: str, n: int, seed: int) -> np.ndarray:
         sig = 90 + 140 * ((t % 90) / 90.0) + rng.normal(0, 6.0, n)
     else:
         raise ValueError(f"unknown workload {kind!r}")
-    return np.clip(sig, 30.0, None)
+    out: np.ndarray = np.clip(sig, 30.0, None)
+    return out
 
 
-WORKLOADS = ("diurnal", "burst", "ramp", "step", "sawtooth")
+SYNTHETIC_WORKLOADS = ("diurnal", "burst", "ramp", "step", "sawtooth")
+# Recorded traces, converted by experiments/make_real_traces.py.
+REAL_WORKLOADS = ("worldcup98", "worldcup98_testpeak")
+WORKLOADS = SYNTHETIC_WORKLOADS + REAL_WORKLOADS
+TRACES = RESULTS / "traces"
+CHECKPOINTS = RESULTS / "checkpoints"
+# Ticks of history kept before every real window so a trained forecaster has
+# a full input window at the window's first tick (telemetry.window).
+REAL_PREFIX = 48
+
+
+_TRACE_CACHE: dict[str, tuple[np.ndarray, dict[str, Any]]] = {}
+
+
+def load_trace(name: str) -> tuple[np.ndarray, dict[str, Any]]:
+    """The full rescaled series and its metadata (results/traces/<name>.*)."""
+    if name not in _TRACE_CACHE:
+        npy, meta = TRACES / f"{name}.npy", TRACES / f"{name}.json"
+        if not npy.exists() or not meta.exists():
+            raise FileNotFoundError(
+                f"{npy} is missing; download the archive (data/README.md) and "
+                "run experiments/make_real_traces.py"
+            )
+        _TRACE_CACHE[name] = (np.load(npy), json.loads(meta.read_text()))
+    return _TRACE_CACHE[name]
+
+
+def real_blocks(name: str, n: int) -> tuple[int, int]:
+    """(first block start, number of blocks) for n-tick windows in the test split.
+
+    Windows are disjoint, start after REAL_PREFIX ticks of test-split history,
+    and never reach back into the training or validation period, so the
+    trained forecaster is only ever evaluated out of sample.
+    """
+    trace, meta = load_trace(name)
+    first = int(meta["val_end"]) + REAL_PREFIX
+    count = (len(trace) - first) // n
+    if count < 1:
+        raise ValueError(f"{name} test split cannot hold a {n}-tick window")
+    return first, count
+
+
+def real_window(name: str, n: int, seed: int) -> tuple[np.ndarray, int]:
+    """An n-tick slice of a recorded trace and its absolute start index.
+
+    ``seed`` picks one of the disjoint test-split blocks through a fixed
+    permutation, so consecutive seeds give distinct windows.
+    """
+    trace, _ = load_trace(name)
+    first, count = real_blocks(name, n)
+    order = np.random.default_rng(0).permutation(count)
+    start = first + int(order[seed % count]) * n
+    return trace[start:start + n].copy(), start
 
 
 # ----------------------------------------------------------------- forecasters
@@ -151,6 +206,87 @@ class PersistenceForecaster:
     def predict(self, t: int, obs: Observation, n_ready: int) -> list[list[float]]:
         H = self.cfg.forecast.horizon
         return [[obs.u, obs.r] for _ in range(H)]
+
+
+_MODEL_CACHE: dict[str, tuple[Any, dict[str, Any]]] = {}
+
+
+def load_frozen(name: str = "tcn") -> tuple[Any, dict[str, Any]]:
+    """A frozen checkpoint from results/checkpoints. Nothing is trained here."""
+    if name not in _MODEL_CACHE:
+        from experiments.lambda_forecast import load_checkpoint
+        path = CHECKPOINTS / f"{name}.pt"
+        if not path.exists():
+            raise FileNotFoundError(
+                f"{path} is missing; run experiments/train_forecasters.py"
+            )
+        _MODEL_CACHE[name] = load_checkpoint(path)
+    return _MODEL_CACHE[name]
+
+
+@dataclass
+class TrainedForecaster:
+    """A trained lambda model, converted to [u, r] exactly as OracleForecaster.
+
+    The model sees only the trace up to and including tick t. Its forecasts
+    depend on arrivals alone, which the controller cannot influence, so they
+    are computed for the whole window in one batch at construction. predict()
+    checks that the arrival rate it is given is the trace value it read, so a
+    run on a rescaled or noised copy of the trace fails instead of silently
+    forecasting a different series.
+    """
+
+    trace_name: str
+    start: int
+    n: int
+    cfg: PactConfig
+    model_name: str = "tcn"
+
+    def __post_init__(self) -> None:
+        from experiments.lambda_forecast import lambda_features, predict_lambda
+        model, meta = load_frozen(self.model_name)
+        trace, tmeta = load_trace(self.trace_name)
+        # A derived family is its base series times one constant. The model
+        # forecasts the base series it was trained on and the forecast is
+        # scaled by the same constant; with train-statistics z-scoring this is
+        # exactly what the model would output on the scaled series.
+        base_name = tmeta.get("derived_from", self.trace_name)
+        extra = float(tmeta.get("extra_scale", 1.0))
+        base, bmeta = load_trace(base_name)
+        if base.shape != trace.shape or not np.allclose(base * extra, trace,
+                                                        rtol=1e-12, atol=0.0):
+            raise ValueError(f"{self.trace_name} is not {base_name} x {extra}")
+        if int(meta["horizon"]) != self.cfg.forecast.horizon:
+            raise ValueError(
+                f"checkpoint horizon {meta['horizon']} != config horizon "
+                f"{self.cfg.forecast.horizon}"
+            )
+        if meta["trace_sha256"] != bmeta["sha256_scaled_npy"]:
+            raise ValueError("checkpoint was trained on a different trace file")
+        if self.start < int(meta["val_end"]):
+            raise ValueError("window overlaps the training/validation period")
+        feats = lambda_features(base, int(bmeta["t0_utc_epoch_s"]),
+                                float(bmeta["dt_s"]), float(meta["lam_mean"]),
+                                float(meta["lam_std"]))
+        origins = np.arange(self.start, self.start + self.n)
+        self._trace = trace
+        self._lam_hat = extra * predict_lambda(model, meta, feats, origins)
+
+    def predict(self, t: int, obs: Observation, n_ready: int) -> list[list[float]]:
+        expected = float(self._trace[self.start + t])
+        if abs(obs.lam - expected) > 1e-6 * max(1.0, abs(expected)):
+            raise ValueError(
+                f"observed arrival {obs.lam} at tick {t} is not trace value "
+                f"{expected}; the trained arm only runs on unmodified windows"
+            )
+        mu = self.cfg.capacity.mu
+        n = max(n_ready, 1)
+        sim = self.cfg.simulator
+        out = []
+        for lam_hat in self._lam_hat[t]:
+            u = max(float(lam_hat), 0.0) / (mu * n)
+            out.append([u, sim.mem_baseline + sim.mem_load_coeff * min(u, 1.0)])
+        return out
 
 
 # ----------------------------------------------------------------- controllers
@@ -206,6 +342,20 @@ class RunOutput:
     fallback_ticks: int = 0
 
 
+LEGACY_N_INITIAL = 4
+
+
+def initial_replicas(lam: np.ndarray, cfg: PactConfig) -> int:
+    """Four replicas, or the first tick's requirement under (2) if larger.
+
+    The requirement is capped at ``n_max``; the floor of four is the start
+    state every earlier run used, so runs whose first tick four replicas can
+    already cover are unchanged.
+    """
+    need = int(math.ceil(float(lam[0]) / (cfg.capacity.mu * cfg.capacity.u_target)))
+    return max(LEGACY_N_INITIAL, min(need, cfg.control.n_max))
+
+
 def run_controller(
     *,
     method: str,
@@ -217,18 +367,31 @@ def run_controller(
     use_coldstart: bool = True,
     use_margin: bool = True,
     use_safety: bool = True,
-    n_initial: int = 4,
+    n_initial: int | None = None,
     lam_forecast: np.ndarray | None = None,
     solver: str = "auto",
+    trace_name: str | None = None,
+    window_start: int | None = None,
+    model_name: str = "tcn",
 ) -> RunOutput:
     """One closed-loop run against the repository's PoolSimulator.
 
     ``solver`` selects the integer MPC implementation: ``"exact"`` is the
     globally optimal solver of :mod:`pact.control.mpc_exact`, ``"greedy"``
     the enumerate-then-complete-greedily solver of :mod:`pact.control.mpc`.
+
+    ``forecaster_kind`` is ``"oracle"``, ``"persist"`` or ``"trained"``. The
+    trained arm needs ``trace_name`` and ``window_start`` (from
+    :func:`real_window`) so the model can read the history before the window.
+
+    ``n_initial`` defaults to :func:`initial_replicas`, so a window cut from
+    the middle of a recorded day does not open with a pool sized for a
+    different load.
     """
     if solver not in ("exact", "greedy", "auto"):
         raise ValueError(f"unknown solver {solver!r}")
+    if n_initial is None:
+        n_initial = initial_replicas(lam, cfg)
     run_cfg = cfg
     if not use_churn:
         run_cfg = replace(run_cfg, control=replace(run_cfg.control, s_churn=0.0))
@@ -255,11 +418,18 @@ def run_controller(
     plant_tau = cold_start_ticks(cfg.control.tau_c_s, cfg.telemetry.dt)
 
     lam_fc = lam if lam_forecast is None else np.asarray(lam_forecast, dtype=float)
-    fc: Forecaster = (
-        OracleForecaster(lam=lam_fc, cfg=run_cfg)
-        if forecaster_kind == "oracle"
-        else PersistenceForecaster(cfg=run_cfg)
-    )
+    fc: Forecaster
+    if forecaster_kind == "oracle":
+        fc = OracleForecaster(lam=lam_fc, cfg=run_cfg)
+    elif forecaster_kind == "trained":
+        if trace_name is None or window_start is None:
+            raise ValueError("the trained forecaster needs trace_name and window_start")
+        if lam_forecast is not None:
+            raise ValueError("lam_forecast does not apply to the trained forecaster")
+        fc = TrainedForecaster(trace_name=trace_name, start=window_start,
+                               n=len(lam), cfg=run_cfg, model_name=model_name)
+    else:
+        fc = PersistenceForecaster(cfg=run_cfg)
 
     hpa = ReactiveHPA(cfg) if method == "reactive" else None
     monitor = DriftMonitor(run_cfg, tau=plant_tau) if use_margin else None
@@ -401,6 +571,9 @@ def summarise(out: RunOutput, cfg: PactConfig) -> dict[str, float]:
         "scaleup_recall": float(rec),
         "scaleup_f1": float(cls.scale_up.f1),
         "overrides": float(out.overrides),
+        "gamma_max": float(np.max(np.abs(out.gamma))) if out.gamma else 0.0,
+        "gamma_moved_pct": (100.0 * float(np.mean(np.abs(np.asarray(out.gamma)) > 0.0))
+                            if out.gamma else 0.0),
         "mean_solve_ms": float(np.mean(out.solve_times) * 1000.0) if out.solve_times else float("nan"),
         "rounding_disagree_pct": 100.0 * out.rounding_disagreements / max(out.ticks, 1),
         "censored_pct": 100.0 * out.censored / max(out.ticks, 1),
@@ -410,7 +583,7 @@ def summarise(out: RunOutput, cfg: PactConfig) -> dict[str, float]:
     }
 
 
-def write_csv(path: Path, rows: list[dict]) -> None:
+def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
     if not rows:
         return
     keys = list(rows[0].keys())

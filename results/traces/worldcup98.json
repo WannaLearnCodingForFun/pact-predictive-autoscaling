@@ -1,0 +1,29 @@
+{
+  "name": "worldcup98",
+  "source": "https://ita.ee.lbl.gov/html/contrib/WorldCup.html",
+  "days": [
+    41,
+    50
+  ],
+  "t0_utc_epoch_s": 896997601,
+  "t0_paris_local": "1998-06-05 00:00:01",
+  "dt_s": 5,
+  "n_bins": 172800,
+  "total_requests": 250257178,
+  "raw_peak_req_s": 2316.2,
+  "raw_mean_req_s": 289.64951157407404,
+  "raw_peak_bin": 100419,
+  "pool_capacity_req_s": 640.0,
+  "peak_fraction_of_capacity": 0.85,
+  "scale_factor": 0.23486745531473968,
+  "scaled_peak_req_s": 544.0,
+  "scaled_mean_req_s": 68.02924371656,
+  "transform": "lambda = (requests per 5 s bin / 5) * scale_factor; no smoothing",
+  "train_fraction": 0.6,
+  "val_fraction": 0.2,
+  "train_end": 103680,
+  "val_end": 138240,
+  "sha256_scaled_npy": "d4e13d6fb5a75e4f4d2ecd9869923c55f1fd39b1d651ee37874bf6eaf8ab444d",
+  "sha256_raw_npy": "dbbb6c91d2c37363efe74f62a621416e1ab7b354ca94ca23fd7b2c4f6b7de018",
+  "test_peak_req_s": 134.95483982384943
+}

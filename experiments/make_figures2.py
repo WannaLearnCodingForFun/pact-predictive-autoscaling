@@ -22,6 +22,7 @@ MK = {"pact": "o", "rounded": "^", "reactive": "v", "static": "P"}
 NM = {"pact": "Integer-exact MPC", "rounded": "Relaxed + rounded",
       "reactive": "Reactive threshold", "static": "Static"}
 INK, MUTED = "#0b0b0b", "#52514e"
+WL_LABEL = {"worldcup98": "WC98", "worldcup98_testpeak": "WC98\n(test peak)"}
 
 plt.rcParams.update({
     "figure.dpi": 220, "savefig.dpi": 600,
@@ -79,7 +80,8 @@ def fig_sensitivity():
         ax2.set_ylabel("Oscillations", color=C["rounded"], fontsize=7.2)
     fig.text(0.5, -0.045, "Left axis (blue circles): service-level violation. "
              "Right axis (orange triangles): oscillation count. "
-             "Synthetic traces, 5 families × 8 seeds per point.",
+             f"Synthetic and recorded traces, {int(s.n_runs.iloc[0]) // 8} "
+             "families × 8 seeds per point.",
              ha="center", fontsize=6.6, color=MUTED)
     save(fig, "fig_sensitivity.png", layout=False)
 
@@ -203,11 +205,13 @@ def fig_per_workload():
                error_kw=dict(lw=0.7, capsize=1.6, ecolor="#444"))
     for ax, lab in ((a1, "SLA violation (%)"), (a2, "Over-provisioning (%)")):
         ax.set_xticks(x)
-        ax.set_xticklabels([w_.capitalize() for w_ in wls], fontsize=7.2)
+        ax.set_xticklabels([WL_LABEL.get(w_, w_.capitalize()) for w_ in wls],
+                           fontsize=7.2)
         ax.set_ylabel(lab)
         ax.xaxis.grid(False)
     a1.legend(ncol=2, fontsize=6.4, loc="upper left", bbox_to_anchor=(0, 1.22))
-    fig.text(0.5, -0.07, "Synthetic traces, 10 seeds per bar; whiskers are one "
+    fig.text(0.5, -0.07, "Synthetic and recorded (WorldCup98) traces, 10 windows "
+             "per bar; whiskers are one "
              "standard deviation.", ha="center", fontsize=6.6, color=MUTED)
     save(fig, "fig_per_workload.png")
 
@@ -242,7 +246,8 @@ def fig_decisions():
     ax.xaxis.grid(False)
     ax.legend(ncol=4, fontsize=6.8, loc="upper left", bbox_to_anchor=(0, 1.19))
     fig.text(0.5, -0.09, "Each tick classified into scale-up / hold / scale-down "
-             "against the observed requirement. Synthetic traces, 50 runs per bar, "
+             "against the observed requirement. Synthetic and recorded traces, "
+             f"{int(d.n_runs.iloc[0])} runs per bar, "
              "95 % bootstrap intervals.", ha="center", fontsize=6.6, color=MUTED)
     save(fig, "fig_decisions.png")
 
@@ -282,7 +287,8 @@ def fig_predictor_quality():
     a2.set_title("(b) Actuation churn", fontsize=8.4)
     a1.legend(fontsize=6.8)
     fig.text(0.5, -0.07, "$w$ = 0 is persistence, $w$ = 1 is perfect foresight. "
-             "persistence. Synthetic traces, 5 families × 6 seeds per point; "
+             "Synthetic and recorded traces, "
+             f"{int(d.n_runs.iloc[0]) // 6} families × 6 seeds per point; "
              "bars are the standard error.", ha="center", fontsize=6.6, color=MUTED)
     save(fig, "fig_predictor_quality.png")
 

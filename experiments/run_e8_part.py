@@ -54,7 +54,24 @@ SWEEPS = [
 ORDER = [s[0] for s in SWEEPS]
 
 
+GREEDY = ROOT / "results" / "e8_solver_greedy"
+
+
+def greedy_churn() -> int:
+    """The churn sweep again with the greedy completion, for the solver comparison."""
+    label, mutate, values = SWEEPS[0]
+    GREEDY.mkdir(parents=True, exist_ok=True)
+    t0 = time.time()
+    rows = M.sweep(label, mutate, values, solver="greedy")
+    (GREEDY / f"{label}.json").write_text(json.dumps(rows, indent=1))
+    print(f"=== {label} (greedy): {len(rows)} rows in {time.time() - t0:.0f}s",
+          flush=True)
+    return 0
+
+
 def main(argv: list[str]) -> int:
+    if argv == ["churn_weight_s@greedy"]:
+        return greedy_churn()
     wanted = ORDER if (not argv or argv[0] == "--all") else argv
     unknown = [w for w in wanted if w not in ORDER]
     if unknown:

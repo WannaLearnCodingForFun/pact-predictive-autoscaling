@@ -254,7 +254,7 @@ def e7_robustness() -> None:
     rows = []
     for sigma in (0.0, 0.02, 0.05, 0.10, 0.15, 0.20, 0.30, 0.40):
         for guard in (True, False):
-            sla, over = [], []
+            sla, over, ovr = [], [], []
             for wl in ("burst", "step", "diurnal"):
                 for seed in range(4):
                     lam = workload(wl, N_TICKS, 6000 + seed)
@@ -266,10 +266,12 @@ def e7_robustness() -> None:
                     s = summarise(out, cfg)
                     sla.append(s["sla_violation_pct"])
                     over.append(s["over_provision_pct"])
+                    ovr.append(s["overrides"])
             rows.append({"forecast_noise_sigma": sigma, "safety_guard": guard,
                          "sla_mean": round(float(np.mean(sla)), 4),
                          "sla_std": round(float(np.std(sla, ddof=1)), 4),
                          "over_mean": round(float(np.mean(over)), 4),
+                         "overrides_total": int(np.sum(ovr)),
                          "n_runs": len(sla)})
     # reactive reference at the same operating point
     sla_r = []
@@ -286,15 +288,61 @@ def e7_robustness() -> None:
 
 
 # ===================================================== manifest
-def manifest() -> None:
+def _git(*args: str) -> str:
     try:
-        sha = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True,
-                             text=True, cwd=Path(__file__).resolve().parents[1]).stdout.strip()
+        return subprocess.run(["git", *args], capture_output=True, text=True,
+                              cwd=Path(__file__).resolve().parents[1]).stdout.strip()
     except Exception:
-        sha = "unknown"
+        return ""
+
+
+def _executed_real() -> list[str]:
+    names = ["e16_forecast_accuracy.csv", "e17_trained_runs.csv",
+             "e17_trained_summary.csv", "e17_bracket_check.csv",
+             "e18_horizon_law_real.csv", "e19_robustness_real.csv",
+             "e20_initial_state.csv", "e21_bias_probe.csv",
+             "e22_margin_ceiling_ablation.csv"]
+    return [n for n in names if (RESULTS / n).exists()]
+
+
+def _checkpoints() -> dict:
+    out = {}
+    for meta in sorted((RESULTS / "checkpoints").glob("*.json")):
+        m = json.loads(meta.read_text())
+        out[meta.stem] = {k: m.get(k) for k in (
+            "kind", "seed", "n_params", "epochs_run", "best_val_loss",
+            "train_device", "torch", "order", "aic") if k in m}
+    return out
+
+
+def manifest() -> None:
+    sha = _git("rev-parse", "HEAD") or "unknown"
+    dirty = bool(_git("status", "--porcelain"))
+    on_remote = bool(_git("branch", "-r", "--contains", sha))
+    trace_meta = {}
+    for name in ("worldcup98", "worldcup98_testpeak"):
+        p = RESULTS / "traces" / f"{name}.json"
+        if p.exists():
+            t = json.loads(p.read_text())
+            trace_meta[name] = {k: t.get(k) for k in (
+                "scale_factor", "scaled_peak_req_s", "test_peak_req_s",
+                "train_end", "val_end", "sha256_scaled_npy")}
+    try:
+        import statsmodels
+        import torch
+        libs = {"torch": torch.__version__, "statsmodels": statsmodels.__version__}
+    except ImportError:
+        libs = {}
     m = {
         "generated_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "git_sha": sha,
+        "git_dirty": dirty,
+        "git_sha_on_remote": on_remote,
+        "git_note": (
+            "results were produced from uncommitted changes on top of git_sha; "
+            "regenerate the manifest after committing and pushing"
+            if dirty else "results match the committed tree at git_sha"),
+        **libs,
         "python": platform.python_version(),
         "platform": platform.platform(),
         "numpy": np.__version__,
@@ -302,6 +350,11 @@ def manifest() -> None:
         "n_seeds": N_SEEDS,
         "workloads": list(WORKLOADS),
         "plant": "pact.sim.queue_model.PoolSimulator (analytical, Kingman p95)",
+        "start_state": (
+            "every run starts with max(4, ceil(lambda[0] / (mu * u_target))) "
+            "replicas, capped at n_max (experiments.harness.initial_replicas); "
+            "earlier result sets used a fixed 4, which on recorded windows put "
+            "every violation in the start-up transient (e20_initial_state.csv)"),
         "mpc_solver": (
             "pact.control.mpc_exact.solve_mpc_exact -- globally optimal integer "
             "solve, validated against exhaustive enumeration in "
@@ -322,20 +375,35 @@ def manifest() -> None:
             "e11_decisions.csv", "e12_coldstart.csv",
             "e13_predictor_quality.csv", "e14_inference_trace.csv",
             "e15_exact_vs_greedy.json", "e15_validation.json",
+            *_executed_real(),
         ],
+        "real_traces": trace_meta,
+        "checkpoints": _checkpoints(),
         "not_executed": {
-            "TCN forecaster training/inference": "torch unavailable and uninstallable (no package-index access)",
-            "LSTM / GRU / Bi-LSTM / Transformer baselines": "torch unavailable",
-            "ARIMA baseline": "statsmodels unavailable",
             "Docker testbed and measured cold start": "no Docker daemon in this environment",
-            "WorldCup98 / Bitbrains traces": "no network access to fetch the archives",
-            "pytest suite": "pytest unavailable; run with experiments/run_tests.py, a minimal runner that executes fixture-free test functions",
+            "Bitbrains GWA-T-12": (
+                "archives located and verified (data/provenance.json) but not used: "
+                "5-minute per-VM utilisation, not request arrivals; driving a 5 s "
+                "controller would need 60x interpolation"),
+            "Trained forecaster in the horizon sweep (E18)": (
+                "the checkpoint has a fixed horizon H = 12; E18 varies H and so "
+                "uses the oracle forecaster, as E5 does"),
+            "Training-variance estimate": (
+                "every forecaster in E16 was trained from one seed; no spread "
+                "across training runs was measured"),
+            "Cause of the trained arm's churn reduction": (
+                "E21 shows the TCN's mean bias does not reproduce it; the "
+                "smoothing hypothesis suggested by E13 was not tested"),
+            "Margin and ceiling ablation under imperfect predictors on synthetic traffic": (
+                "E22 covers the recorded windows only; E4 covers the synthetic "
+                "families under the oracle only"),
         },
-        "forecaster_substitution": (
-            "The learned forecaster could not be run. Every controller is instead "
-            "driven by two bracketing oracles - perfect foresight and persistence - "
-            "so that controller effects can be separated from forecaster quality. "
-            "Results that hold under both brackets are properties of the controller."
+        "forecaster_arms": (
+            "Controllers are driven by a trained TCN forecasting the arrival rate "
+            "(E17, E22, recorded trace only, frozen checkpoint, no training at "
+            "evaluation time) and by two bracketing predictors, perfect foresight "
+            "and persistence, which every experiment uses so that controller "
+            "effects can be separated from forecaster quality."
         ),
     }
     (RESULTS / "manifest.json").write_text(json.dumps(m, indent=2))

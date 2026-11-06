@@ -16,7 +16,7 @@ const LIT = [
    'Session-based CNF traffic', 'Finite distinct tolerance intervals; bounds on reactive scaling',
    'Characterises the baseline only; no predictive mechanism'],
   ['[2]', 'Forecast-driven', 'ETimeMixer with convolution; burst/non-burst state classification',
-   'Seven public cloud workload traces', 'Reports ≈ 70 % utilisation with fewer scaling updates',
+   'Seven public cloud workload traces', 'Reports ≈ 70 % utilisation with fewer scaling updates',
    'Scaling rule is a state-dependent heuristic, not an optimisation'],
   ['[3]', 'Forecast-driven', 'Controlled comparison of statistical and neural forecasters',
    'Kubernetes workload traces', 'Neural advantage is workload-dependent, not universal',
@@ -28,7 +28,7 @@ const LIT = [
    'Two applications, seven workloads', 'Near-zero SLA violations at sub-millisecond decision cost',
    'Reactive state estimation; no lookahead across actuation delay'],
   ['[6]', 'Optimisation', 'Proactive forecaster + reactive estimator in one chance-constrained MPC',
-   'Alipay production traces, three clusters', 'Reports > 36 % fewer SLO violations than a hybrid baseline',
+   'Alipay production traces, three clusters', 'Reports > 36 % fewer SLO violations than a hybrid baseline',
    'Real-valued decisions, rounded for use; no integrality constraint; no churn penalty; 30 min intervals'],
   ['[7]', 'Hybrid learning + control', 'Deep forecaster supplying feedforward, feedback law correcting residual',
    'Containerised microservice benchmarks', 'Feedback term stabilises the loop when the predictor degrades',
@@ -177,12 +177,13 @@ const q20 = pick('asymmetry_qup_over_qdown', 20.0);
 const dm1 = pick('rate_limit_delta_max', 1);
 const dm4 = pick('rate_limit_delta_max', 4);
 const dm8 = pick('rate_limit_delta_max', 8);
+const e9at = dm => one(E9, r => r.delta_max === dm && r.H === 12);
 
 const sensitivity = [
   H2('G. Control-Parameter Sensitivity'),
   P('The controller exposes five parameters that shape the trade-off between service level and '
-  + 'actuation stability. Each was swept independently over the five workload families with eight '
-  + 'seeds, holding the others at their defaults. Table X reports the sweeps and Fig. 10 shows '
+  + `actuation stability. Each was swept independently over ${B.fams(MAN.workloads).toLowerCase().replace('worldcup98', 'WorldCup98')}, `
+  + `${s0.n_runs / MAN.workloads.length} seeds or windows each, holding the others at their defaults. Table X reports the sweeps and Fig. 10 shows `
   + 'them. The results reorder the components by importance relative to what the design assumed.'),
   mkTable(
     ['Parameter', 'Value', 'Violation (%)', 'Over-prov. (%)', 'Actions', 'Oscillations', 'Cost /1k'],
@@ -202,49 +203,48 @@ const sensitivity = [
       ['', '8', f(dm8.sla_mean, 2), f(dm8.over_mean, 1), f(dm8.act_mean, 1), f(dm8.osc_mean, 1), f(dm8.cost_mean, 1)],
     ],
     [1800, 900, 1300, 1400, 1000, 1300, 1000], { left: false, size: 13 }),
-  CAP(`Table X. Control-parameter sweeps. Synthetic traces, 5 families × 8 seeds = ${s0.n_runs} runs `
+  CAP(`Table X. Control-parameter sweeps. ${B.fams(MAN.workloads)}, ${s0.n_runs} runs `
   + 'per row; the remaining parameters are held at their defaults. Oscillations counts sign reversals '
   + 'in the replica delta.'),
-  P('The churn penalty is not a pure trade-off. Raising s from zero to unity reduces violations from '
+  P('The churn penalty is not a pure trade-off. Raising s from zero to unity changes violations from '
   + `${f(s0.sla_mean, 2)} % to ${f(s1.sla_mean, 2)} %, over-provisioning from ${f(s0.over_mean, 1)} % to `
-  + `${f(s1.over_mean, 1)} %, and oscillations from ${f(s0.osc_mean, 1)} to ${f(s1.osc_mean, 1)}, improving all three at once. `
-  + 'Beyond unity the curve is flat. The mechanism is that penalising change suppresses the '
+  + `${f(s1.over_mean, 1)} %, and oscillations from ${f(s0.osc_mean, 1)} to ${f(s1.osc_mean, 1)}`
+  + `${[s1.sla_mean < s0.sla_mean, s1.over_mean < s0.over_mean, s1.osc_mean < s0.osc_mean].every(Boolean) ? ', improving all three at once' : ''}. `
+  + `Between s = 1 and s = ${s2.value} violations move to ${f(s2.sla_mean, 2)} % and over-provisioning to ${f(s2.over_mean, 1)} %, `
+  + `while oscillations fall again, to ${f(s2.osc_mean, 1)}, and actions to ${f(s2.act_mean, 1)}. Penalising change suppresses the `
   + 'scale-down-then-scale-up pairs that would otherwise remove capacity immediately before it is '
-  + 'needed again, so the controller holds a steadier pool that happens also to be a smaller one. '
+  + 'needed again, so the controller holds a steadier pool that is also a smaller one. '
   + 'This was not an anticipated result; the penalty was introduced to reduce churn alone.'),
   P('The cooldown dominates stability, and by a wider margin than the churn penalty does. Removing it '
   + `entirely raises the action count from ${f(cd60.act_mean, 1)} to ${f(cd0.act_mean, 1)} per run and oscillations from `
-  + `${f(cd60.osc_mean, 1)} to ${f(cd0.osc_mean, 1)}, while violations rise from ${f(cd60.sla_mean, 2)} % to ${f(cd0.sla_mean, 2)} %. `
-  + `Extending it to ${cd120.value} s continues to help on both axes, reaching ${f(cd120.act_mean, 1)} actions at `
-  + `${f(cd120.sla_mean, 2)} % violations for ${f(cd120.over_mean, 1)} % over-provisioning. Fig. 11 plots this sweep in the `
-  + 'violation-versus-churn plane; the curve is monotone, so on these workloads the cooldown is close '
-  + 'to free. The practical implication is that an operator tuning this controller should set the '
-  + 'cooldown first and the churn weight second.'),
-  P(`The deadband is inert at its default. Values of θ = ${th1.value} and θ = 0 give identical results, because an `
+  + `${f(cd60.osc_mean, 1)} to ${f(cd0.osc_mean, 1)}, while violations change from ${f(cd60.sla_mean, 2)} % to ${f(cd0.sla_mean, 2)} %. `
+  + `Extending it to ${cd120.value} s gives ${f(cd120.act_mean, 1)} actions at `
+  + `${f(cd120.sla_mean, 2)} % violations. It is not free: over-provisioning rises from ${f(cd0.over_mean, 1)} % without a cooldown `
+  + `to ${f(cd120.over_mean, 1)} % at ${cd120.value} s. Fig. 11 plots this sweep in the violation-versus-churn plane. `
+  + 'An operator tuning this controller should set the cooldown first and the churn weight second.'),
+  P(`The deadband is inert at its default. Values of θ = ${th1.value} and θ = 0 give `
+  + `${['sla_mean', 'over_mean', 'act_mean'].every(k => pick('deadband_theta', 0)[k] === th1[k]) ? 'identical' : 'nearly identical'} results, because an `
   + 'integer action whose magnitude is below one is already zero; the deadband only becomes active at '
   + `θ = ${th2.value}, where it cuts actions from ${f(th1.act_mean, 1)} to ${f(th2.act_mean, 1)} at a cost of `
   + `${f(th2.sla_mean - th1.sla_mean, 2)} percentage points of service level, and at θ = ${th3.value} it becomes harmful, reaching `
-  + `${f(th3.sla_mean, 2)} % violations. The asymmetric tracking weight is similarly weak: raising q⁺/q⁻ from `
-  + `${q1.value} to ${q20.value} moves violations only from ${f(q1.sla_mean, 2)} % to ${f(q20.sla_mean, 2)} %. Both findings are reported `
-  + 'because they contradict the design intent, in which the deadband and the cost asymmetry were '
-  + 'expected to be primary controls.'),
-  P('The rate limit is the one parameter that stops mattering. Raising Δmax from '
-  + `${dm4.value} to ${dm8.value} leaves the violation rate at ${f(dm8.sla_mean, 2)} %, over-provisioning at ${f(dm8.over_mean, 1)} % and the action `
-  + 'count at '
-  + `${f(dm8.act_mean, 1)} — identical to the default to the precision reported. Pool bounds, not the rate limit, `
+  + `${f(th3.sla_mean, 2)} % violations. The asymmetric tracking weight is not inert: raising q⁺/q⁻ from `
+  + `${q1.value} to ${q20.value} changes violations from ${f(q1.sla_mean, 2)} % to ${f(q20.sla_mean, 2)} % and over-provisioning from `
+  + `${f(q1.over_mean, 1)} % to ${f(q20.over_mean, 1)} %.`),
+  P('The rate limit stops mattering above its default. Raising Δmax from '
+  + `${dm4.value} to ${dm8.value} changes the violation rate by ${f(dm8.sla_mean - dm4.sla_mean, 2)} points, over-provisioning by `
+  + `${f(dm8.over_mean - dm4.over_mean, 2)} points and the action count by ${f(dm8.act_mean - dm4.act_mean, 2)}. Pool bounds, not the rate limit, `
   + 'constrain the action set once Δmax is of the order of the pool itself: an action that would '
   + 'move more than a few replicas is already inadmissible because it would land outside '
-  + '[Nmin, Nmax]. The cost of raising it is not identical, though. The exact search is '
-  + 'O((2Δmax + 1)^m), so median solve time rises from 20.8 ms at Δmax = 4 to 58.8 ms at 6 and '
-  + '110.9 ms at 8, with a worst case of 204 ms. Δmax above about four buys a controller that '
-  + 'behaves the same and costs five times as much to compute, which is a configuration error '
-  + 'rather than a trade-off.'),
+  + '[Nmin, Nmax]. The cost of raising it is not small. The exact search is '
+  + `O((2Δmax + 1)^m), and at the default horizon Table XI measures a mean solve time of ${f(e9at(4).mean_solve_ms, 1)} ms at Δmax = 4 `
+  + `and ${f(e9at(8).mean_solve_ms, 1)} ms at Δmax = 8, ${f(e9at(8).mean_solve_ms / e9at(4).mean_solve_ms, 1)} times as much. Raising Δmax above four buys a `
+  + 'controller that behaves almost the same and costs several times as much to compute.'),
   img('fig_sensitivity.png', 6.9),
   CAP('Fig. 10. Control-parameter sweeps. Blue circles on the left axis are the violation rate; '
-  + 'orange triangles on the right axis are the oscillation count. Synthetic traces.'),
+  + `orange triangles on the right axis are the oscillation count. ${B.fams(MAN.workloads)}.`),
   img('fig_cooldown.png', 3.35),
   CAP('Fig. 11. The cooldown sweep in the violation-versus-churn plane. Points are labelled with '
-  + 'the cooldown that produced them. Synthetic traces.'),
+  + `the cooldown that produced them. ${B.fams(MAN.workloads)}.`),
 ];
 
 // ============================================================ V-G solve time
@@ -321,10 +321,19 @@ const solvetime = [
   + 'log axes. Synthetic traces.'),
 ];
 
+const E12X = E12.filter(r => r.method === 'pact' && r.exact_tick_pct !== '' && r.exact_tick_pct !== undefined);
+const E12EX = E12X.filter(r => Number(r.exact_tick_pct) >= 100).map(r => Math.round(r.tau_c_s));
+const E12GR = E12X.filter(r => Number(r.exact_tick_pct) < 100);
+const E12GRall = E12GR.every(r => Number(r.exact_tick_pct) === 0);
+const E12GRtaus = E12GR.map(r => Math.round(r.tau_c_s));
+const E18X = (() => { const R = B.E18 || []; return { cells: R.length, fallback: R.filter(r => Number(r.exact_frac) < 1).length }; })();
+
 // ============================================================ V-H cold start
 function cs(m, tau) { return one(E12, r => r.method === m && Math.abs(r.tau_c_s - tau) < 1e-9); }
 const taus12 = [...new Set(E12.map(r => r.tau_c_s))].sort((a, b) => a - b);
 const tauLo = taus12[0], tauHi = taus12[taus12.length - 1];
+const gaps = taus12.map(t => cs('reactive', t).sla_mean - cs('pact', t).sla_mean);
+const gapMono = gaps.every((g, i) => i === 0 || g >= gaps[i - 1]);
 
 const coldstart = [
   H2('J. Robustness to Actuation Delay'),
@@ -336,23 +345,35 @@ const coldstart = [
     ['τc (s)', 'Exact MPC\nviol. (%)', 'Rounded\nviol. (%)', 'Reactive\nviol. (%)',
      'Exact\nactions', 'Rounded\nactions', 'Reactive\nactions'],
     taus12.map(t => [
-      String(Math.round(t)),
+      String(Math.round(t)) + (E12GRtaus.includes(Math.round(t)) ? ' †' : ''),
       f(cs('pact', t).sla_mean, 2), f(cs('rounded', t).sla_mean, 2), f(cs('reactive', t).sla_mean, 2),
       f(cs('pact', t).act_mean, 1), f(cs('rounded', t).act_mean, 1), f(cs('reactive', t).act_mean, 1),
     ]),
     [900, 1400, 1300, 1300, 1200, 1300, 1300], { left: false, size: 13 }),
   CAP(`Table XIII. Sensitivity to cold-start latency with the horizon fixed at H = 30 (150 s lookahead), `
-  + `which satisfies (6) at every value shown. Synthetic traces, 3 families × 5 seeds = ${cs('pact', tauLo).n_runs} runs per cell.`),
-  P('With an adequate horizon the integer-exact controller is close to insensitive to actuation delay '
+  + `which satisfies (6) at every value shown. Synthetic traces, 3 families × 5 seeds = ${cs('pact', tauLo).n_runs} runs per cell.`
+  + (E12GR.length
+    ? ` † At this dead time an H = 30 plan exceeds the exact solver’s budget, so the predictive controller was solved by the greedy completion `
+      + (E12GRall ? 'on every tick; ' : `on ${E12GR.map(r => f(100 - Number(r.exact_tick_pct), 0) + '\u202f%').join(', ')} of ticks; `)
+      + 'those entries are not integer-exact.'
+    : '')),
+  P((E12GR.length
+    ? `Only the τc = ${E12EX.join(' s and ')} s rows of this sweep are solved exactly. From τc = ${Math.min(...E12GRtaus)} s upward, `
+      + 'an H = 30 plan falls in the band of Section V-I where the exact solve is unaffordable, and the predictive controller ran '
+      + 'on the greedy completion. What follows is therefore a statement about the predictive controller with an adequate '
+      + 'horizon, and only its two shortest delays are integer-exact. '
+    : '')
+  + 'With an adequate horizon the predictive controller is close to insensitive to actuation delay '
   + `over the practical range. Violations stay between ${f(cs('pact', 5).sla_mean, 2)} % and ${f(cs('pact', 60).sla_mean, 2)} % as the cold start grows from `
   + `${Math.round(tauLo)} s to 60 s, a factor of twelve in delay. The reactive controller degrades steadily over the same `
   + `range, from ${f(cs('reactive', 5).sla_mean, 2)} % to ${f(cs('reactive', 60).sla_mean, 2)} %, and the rounded controller degrades faster still, from `
   + `${f(cs('rounded', 5).sla_mean, 2)} % to ${f(cs('rounded', 60).sla_mean, 2)} %. At the longest delay tested, ${Math.round(tauHi)} s, the three sit at `
   + `${f(cs('pact', tauHi).sla_mean, 2)} %, ${f(cs('reactive', tauHi).sla_mean, 2)} % and ${f(cs('rounded', tauHi).sla_mean, 2)} % respectively.`),
-  P('This is the experiment that demonstrates what the ablation of Section V-E could not. In that '
-  + 'ablation, disabling the dead-time term changed nothing, because the horizon remained long enough '
+  P('This experiment measures what the ablation of Section V-E could not. In that '
+  + 'ablation, disabling the dead-time term left service level statistically unchanged, because the horizon remained long enough '
   + 'that the optimiser could compensate implicitly. Here the dead time itself is the variable, and '
-  + 'the separation between the predictive and reactive controllers grows monotonically with it. '
+  + `the separation between the reactive and the exact controller ${gapMono ? 'grows monotonically' : 'grows, though not monotonically,'} with it, `
+  + `from ${f(gaps[0], 2)} to ${f(gaps[gaps.length - 1], 2)} points. `
   + 'Dead-time tolerance is therefore a property of the predictive formulation as a whole rather than '
   + 'of the explicit delay term in (5), and the paper’s claim is stated at that level.'),
   P('The churn panel adds a second observation. The rounded controller’s action count is '
@@ -361,16 +382,21 @@ const coldstart = [
   + 'delay, as a controller responding to the plant should.'),
   img('fig_coldstart.png', 6.9),
   CAP('Fig. 14. Service level and churn against cold-start latency at a fixed adequate horizon. '
-  + 'Synthetic traces.'),
+  + 'Synthetic traces.'
+  + (E12GR.length ? ` The predictive controller’s points at τc ≥ ${Math.min(...E12GRtaus)} s were solved by the greedy completion (Table XIII).` : '')),
 ];
 
 // ============================================================ V-I per workload
 function pw(wl, m) { return one(E10, r => r.workload === wl && r.method === m); }
 const wls = [...new Set(E10.map(r => r.workload))];
+const REAL_WL = wls.filter(w => B.REAL_FAMS.includes(w));
+const gapOf = w => pw(w, 'rounded-oracle').sla_mean - pw(w, 'pact-oracle').sla_mean;
+const widest = wls.reduce((a, w) => (gapOf(w) > gapOf(a) ? w : a));
+const exactWorse = wls.filter(w => gapOf(w) < 0);
 
 const perWorkload = [
   H2('K. Per-Workload Behaviour'),
-  P('The aggregate figures of Section V-D average over five demand shapes that stress the controller '
+  P(`The aggregate figures of Section V-D average over ${wls.length} demand shapes that stress the controller `
   + 'differently. Table XIV disaggregates them, and the variation is large enough that the aggregate '
   + 'alone would be misleading.'),
   mkTable(
@@ -385,25 +411,33 @@ const perWorkload = [
                 f(r.act_mean, 1), f(r.osc_mean, 1), f(r.p95_mean, 0)];
       })),
     [1300, 1300, 1700, 1700, 900, 1200, 900], { left: false, size: 12 }),
-  CAP(`Table XIV. Per-workload breakdown. Synthetic traces, 10 seeds per row, oracle predictor; `
+  CAP(`Table XIV. Per-workload breakdown. ${B.fams(wls)}, ${pw(wls[0], 'pact-oracle').n_runs} seeds or windows per row, oracle predictor; `
   + 'values are mean ± one standard deviation.'),
-  P('The burst family separates the methods most sharply. There the rounded controller reaches '
-  + `${f(pw('burst', 'rounded-oracle').sla_mean, 2)} % violations against ${f(pw('burst', 'pact-oracle').sla_mean, 2)} % for the exact controller, the largest gap in the table, `
+  P(`The ${widest} family separates the methods most sharply. There the rounded controller reaches `
+  + `${f(pw(widest, 'rounded-oracle').sla_mean, 2)} % violations against ${f(pw(widest, 'pact-oracle').sla_mean, 2)} % for the exact controller, the largest gap in the table, `
   + 'because a burst drives the pool through many integer boundaries in quick succession and every '
   + 'crossing is an opportunity for the rounding error to change the decision. The diurnal and ramp '
   + 'families, whose demand changes slowly relative to the control interval, show almost no separation '
   + `at all — ${f(pw('diurnal', 'rounded-oracle').sla_mean, 2)} % against ${f(pw('diurnal', 'pact-oracle').sla_mean, 2)} % on diurnal traffic. The advantage of exact solution is `
   + 'therefore concentrated in workloads with fast transitions, which is also where an auto-scaler is '
   + 'most needed and least likely to perform well.'),
-  P('The sawtooth family is the one case where the exact controller is worse, at '
-  + `${f(pw('sawtooth', 'pact-oracle').sla_mean, 2)} % against ${f(pw('sawtooth', 'rounded-oracle').sla_mean, 2)} %, and the standard deviation across seeds is correspondingly `
-  + `large at ${f(pw('sawtooth', 'pact-oracle').sla_std, 2)}. A sawtooth resets demand discontinuously every ninety ticks; the churn penalty `
-  + 'resists the repeated scale-down that the shape demands, and the controller spends part of each '
-  + 'period recovering. This is a genuine failure mode of the churn penalty under periodic '
-  + 'discontinuity and is reported as such rather than averaged away.'),
+  P(`${exactWorse.length === 1 ? `The ${exactWorse[0]} family is the one case` : `${exactWorse.length} families are cases`} where the exact controller violates more than the rounded one`
+  + (exactWorse.includes('sawtooth')
+    ? `; on sawtooth traffic it reaches ${f(pw('sawtooth', 'pact-oracle').sla_mean, 2)} % against ${f(pw('sawtooth', 'rounded-oracle').sla_mean, 2)} %, with a standard deviation across seeds of `
+      + `${f(pw('sawtooth', 'pact-oracle').sla_std, 2)}. A sawtooth resets demand discontinuously every ninety ticks. One plausible mechanism is that the churn penalty `
+      + 'resists the repeated scale-down the shape demands, so the controller spends part of each period recovering; '
+      + 'no experiment here isolates it. The failure is reported rather than averaged away.'
+    : '.')),
+  P('The two recorded families are easier than the synthetic ones at the default operating point. '
+  + REAL_WL.map(w => `On ${w === 'worldcup98' ? 'WC98/trace' : 'WC98/test'} the exact, rounded and reactive controllers violate on `
+    + `${f(pw(w, 'pact-oracle').sla_mean, 2)} %, ${f(pw(w, 'rounded-oracle').sla_mean, 2)} % and ${f(pw(w, 'reactive').sla_mean, 2)} % of ticks, `
+    + `carrying ${f(pw(w, 'pact-oracle').over_mean, 1)} %, ${f(pw(w, 'rounded-oracle').over_mean, 1)} % and ${f(pw(w, 'reactive').over_mean, 1)} % excess capacity`).join('; ')
+  + `. ${REAL_WL.some(w => pw(w, 'reactive').over_mean < pw(w, 'pact-oracle').over_mean) ? 'On recorded traffic the reactive baseline is not the over-provisioned method it is on the synthetic families: '
+    + `on ${REAL_WL.filter(w => pw(w, 'reactive').over_mean < pw(w, 'pact-oracle').over_mean).map(w => (w === 'worldcup98' ? 'WC98/trace' : 'WC98/test')).join(' and ')} it holds less excess capacity than the exact controller `
+    + 'at no measurable service-level cost.' : ''}`),
   img('fig_per_workload.png', 6.9),
   CAP('Fig. 15. Per-workload service level and capacity cost. Whiskers are one standard deviation '
-  + 'over 10 seeds. Synthetic traces.'),
+  + `over ${pw(wls[0], 'pact-oracle').n_runs} seeds or windows. ${B.fams(wls)}.`),
 ];
 
 // ============================================================ V-J decisions
@@ -433,7 +467,7 @@ const decisions = [
        `${f(dRe.scaleup_precision_mean, 3)} [${f(dRe.scaleup_precision_lo, 3)}, ${f(dRe.scaleup_precision_hi, 3)}]`,
        f(dRe.hold_f1_mean, 3), f(dRe.accuracy_mean, 3)]],
     [2000, 2200, 2200, 1200, 1200], { left: false, size: 13 }),
-  CAP(`Table XV. Per-tick decision classification against the observed requirement. Synthetic traces, `
+  CAP(`Table XV. Per-tick decision classification against the observed requirement. ${B.fams(MAN.workloads)}, `
   + `${dPo.n_runs} runs per row; intervals are 95 % bootstrap.`),
   P('Scale-up recall is low for every method, between '
   + `${f(Math.min(dPo.scaleup_recall_mean, dPp.scaleup_recall_mean, dRo.scaleup_recall_mean, dRe.scaleup_recall_mean), 3)} and `
@@ -446,14 +480,14 @@ const decisions = [
   + 'not be read as a quality ranking, and the paper does not use it as one.'),
   P('The one comparison it does support is between predictors at fixed control law. Moving from '
   + `persistence to perfect foresight changes scale-up recall from ${f(dPp.scaleup_recall_mean, 3)} to ${f(dPo.scaleup_recall_mean, 3)} and precision from `
-  + `${f(dPp.scaleup_precision_mean, 3)} to ${f(dPo.scaleup_precision_mean, 3)}. The persistence predictor scores higher on both, which at first appears `
+  + `${f(dPp.scaleup_precision_mean, 3)} to ${f(dPo.scaleup_precision_mean, 3)}. ${dPp.scaleup_recall_mean > dPo.scaleup_recall_mean && dPp.scaleup_precision_mean > dPo.scaleup_precision_mean ? 'The persistence predictor scores higher on both' : 'The persistence predictor does not score lower'}, which at first appears `
   + 'paradoxical. It follows from the same definitional issue: persistence reacts to the most recent '
   + 'observation and therefore produces decisions that correlate with a per-tick ground truth derived '
   + 'from that same observation, while the oracle acts on demand that has not yet arrived and is '
-  + 'scored as wrong until it does. The aggregate service-level figures in Table IV, where the oracle '
+  + 'scored as wrong until it does. The aggregate service-level figures in Table VII, where the oracle '
   + 'is ahead, are the more meaningful comparison.'),
   img('fig_decisions.png', 6.9),
-  CAP('Fig. 16. Per-tick decision classification with 95 % bootstrap intervals. Synthetic traces.'),
+  CAP(`Fig. 16. Per-tick decision classification with 95 % bootstrap intervals. ${B.fams(MAN.workloads)}.`),
 ];
 
 // ============================================================ deployment guidance
@@ -467,15 +501,19 @@ const guidance = [
   BUL(`Set the horizon to the smallest value satisfying HΔt ≥ τc, then add one interval of slack. `
     + 'Section V-A shows the penalty for an under-sized horizon is severe and the benefit of '
     + 'oversizing it is negligible, so the asymmetry favours erring long.'),
-  BUL(`Set the cooldown next. Section V-G shows it is the dominant stability control; ${cd60.value} s `
-    + 'was adequate on every workload tested and longer values continued to help.'),
-  BUL('Set the churn weight to approximately unity. Below that value stability degrades; above it '
-    + 'nothing changes.'),
-  BUL('Leave the deadband at zero or one and the cost asymmetry at any moderate value. Neither was '
-    + 'found to matter, and a deadband of two or more trades service level for stability that the '
-    + 'cooldown already provides more cheaply.'),
-  P('The procedure assumes a single replica pool with the plant characteristics described in Section '
-  + 'IV-A and should be re-validated before transfer to a different deployment, particularly one in '
+  BUL(`Set the cooldown next. Of the parameters swept in Section V-G it has the largest effect on churn: removing it raises `
+    + `actions from ${f(cd60.act_mean, 1)} to ${f(cd0.act_mean, 1)} per run. Lengthening it to ${cd120.value}\u202fs lowered both actions `
+    + `(${f(cd120.act_mean, 1)}) and violations (${f(cd120.sla_mean, 2)}\u202f%) in the pooled sweep, at ${f(cd120.over_mean - cd60.over_mean, 1)} points more `
+    + 'over-provisioning; the sweep was pooled across families and was not repeated per workload.'),
+  BUL(`Set the churn weight to unity or above. Raising s from 0 to 1 ${[s1.sla_mean < s0.sla_mean, s1.over_mean < s0.over_mean, s1.osc_mean < s0.osc_mean].every(Boolean) ? 'improved violations, over-provisioning and oscillations together' : 'changed violations, over-provisioning and oscillations'}, `
+    + `and s = ${s2.value}, the largest value swept, cut actions further to ${f(s2.act_mean, 1)} at ${f(s2.sla_mean, 2)}\u202f% violations. `
+    + 'The upper end of the useful range was not reached by the sweep.'),
+  BUL(`Leave the deadband at zero or one, which ${['sla_mean', 'over_mean', 'act_mean'].every(k => pick('deadband_theta', 0)[k] === th1[k]) ? 'behave identically' : 'behave almost identically'}. `
+    + `θ = ${th2.value} cuts actions from ${f(th1.act_mean, 1)} to ${f(th2.act_mean, 1)} but costs ${f(th2.sla_mean - th1.sla_mean, 2)} points of violation `
+    + `and ${f(th2.over_mean - th1.over_mean, 1)} of over-provisioning. Do not set the cost asymmetry to unity: q⁺/q⁻ = ${q1.value} gives `
+    + `${f(q1.sla_mean, 2)}\u202f% violations against ${f(q20.sla_mean, 2)}\u202f% at ${q20.value}.`),
+  P('The procedure assumes a single replica pool with the plant characteristics described in Sections '
+  + 'IV-A and IV-B and should be re-validated before transfer to a different deployment, particularly one in '
   + 'which several services share hosts.'),
 ];
 
@@ -517,31 +555,31 @@ const exactGap = [
       ['Dead time τ, horizon H, tracking-relevant actions m',
        `${G15.tau}, ${G15.horizon}, ${G15.m}`],
       ['Plant states compared', `${G15.ticks}`],
-      ['First actions in agreement', `${G15.agree} (${f(G15.agree_pct, 2)} %)`],
-      ['First actions in disagreement', `${G15.ticks - G15.agree} (${f(disagree, 2)} %)`],
+      ['First actions in agreement', `${G15.agree} (${f(G15.agree_pct, 2)} %)`],
+      ['First actions in disagreement', `${G15.ticks - G15.agree} (${f(disagree, 2)} %)`],
       ['Greedy completion attains a worse objective',
-       `${G15.greedy_worse} (${f(G15.greedy_worse_pct, 2)} %)`],
+       `${G15.greedy_worse} (${f(G15.greedy_worse_pct, 2)} %)`],
       ['Greedy completion attains a better objective', `${G15.greedy_better}`],
       ['Mean objective excess of greedy completion', `${f(G15.cost_excess_mean, 3)}`],
       ['Largest objective excess of greedy completion', `${f(G15.cost_excess_max, 2)}`],
-      ['Mean relative objective excess', `${f(G15.rel_excess_mean_pct, 3)} %`],
+      ['Mean relative objective excess', `${f(G15.rel_excess_mean_pct, 3)} %`],
       ['Exact solve time, median / p95 / max',
-       `${f(G15.exact_p50_ms, 2)} / ${f(G15.exact_p95_ms, 2)} / ${f(G15.exact_max_ms, 2)} ms`],
+       `${f(G15.exact_p50_ms, 2)} / ${f(G15.exact_p95_ms, 2)} / ${f(G15.exact_max_ms, 2)} ms`],
       ['Greedy solve time, median / p95 / max',
-       `${f(G15.greedy_p50_ms, 3)} / ${f(G15.greedy_p95_ms, 3)} / ${f(G15.greedy_max_ms, 3)} ms`],
+       `${f(G15.greedy_p50_ms, 3)} / ${f(G15.greedy_p95_ms, 3)} / ${f(G15.greedy_max_ms, 3)} ms`],
     ],
     [6200, 3100], { left: true }),
   CAP('Table XII. Algorithm 2 against enumeration with greedy horizon completion, on '
   + 'the configuration used throughout this paper. Objective excess is in units of the cost (7).'),
-  P(`The two solvers choose the same action on ${f(G15.agree_pct, 2)} % of states and differ on the remaining `
-  + `${f(disagree, 2)} %. On ${f(G15.greedy_worse_pct, 2)} % of states the greedy completion lands on a plan of strictly higher `
+  P(`The two solvers choose the same action on ${f(G15.agree_pct, 2)} % of states and differ on the remaining `
+  + `${f(disagree, 2)} %. On ${f(G15.greedy_worse_pct, 2)} % of states the greedy completion lands on a plan of strictly higher `
   + 'cost, and on none does it beat Algorithm 2 — the expected signature of an exact reference, and '
   + 'the reason the comparison is reported in this direction rather than as a symmetric '
   + 'disagreement rate.'),
   P('Two features of the gap matter more than its size. It is one-sided, so the greedy completion '
   + 'is a relaxation of the same problem rather than a different trade-off; and it is concentrated '
-  + `rather than uniform, with a mean relative excess of ${f(G15.rel_excess_mean_pct, 3)} % against a maximum of `
-  + `${f(G15.rel_excess_max_pct, 1)} %. The states where it errs are those whose optimal plan ends the horizon on a large `
+  + `rather than uniform, with a mean relative excess of ${f(G15.rel_excess_mean_pct, 3)} % against a maximum of `
+  + `${f(G15.rel_excess_max_pct, 1)} %. The states where it errs are those whose optimal plan ends the horizon on a large `
   + 'action, which is precisely where zeroing the tail misprices the churn term. A controller built '
   + 'on the greedy completion is therefore not uniformly slightly worse; it is almost always '
   + 'identical and occasionally substantially wrong.'),
@@ -552,8 +590,8 @@ const exactGap = [
   + 'construction; no tick favours the greedy completion. (c) Solve time for both, against the '
   + 'control interval.'),
   P('The disagreement is structured rather than scattered, as Fig. 13(a) shows. It peaks at '
-  + `u*(t) = ${peakU}, where the two solvers choose differently on ${f(peakPct, 1)} % of ticks, and falls `
-  + `to ${f(bigUpPct, 1)} % once the exact action is a scale-up of three or more. `
+  + `u*(t) = ${peakU}, where the two solvers choose differently on ${f(peakPct, 1)} % of ticks, and falls `
+  + `to ${f(bigUpPct, 1)} % once the exact action is a scale-up of three or more. `
   + 'That shape follows from the mechanism: a large scale-up saturates '
   + 'the rate limit, so every completion agrees on it, whereas a moderate scale-down leaves room '
   + 'for the horizon to be finished several ways and the mispriced tail decides between them. The '
@@ -564,19 +602,19 @@ const exactGap = [
   + 'control-parameter sweep of Section V-G was run once under each solver, with the same '
   + 'workloads, the same seeds and the same configuration, so the pair isolates what approximating '
   + 'the solve does to a tuning conclusion. Under the greedy completion, raising the churn weight '
-  + `to unity drove the violation rate to ${f(gc1.greedy_sla, 3)} % and held it there across every larger value `
-  + `tested. Under Algorithm 2 the same sweep sits near ${f(gc1.exact_sla, 2)} %, and the largest divergence over `
-  + `the sweep is ${f(gcw.greedy_sla, 3)} % against ${f(gcw.exact_sla, 2)} % at s = ${gcw.value}.`),
+  + `to unity drove the violation rate to ${f(gc1.greedy_sla, 3)} % and held it there across every larger value `
+  + `tested. Under Algorithm 2 the same sweep sits near ${f(gc1.exact_sla, 2)} %, and the largest divergence over `
+  + `the sweep is ${f(gcw.greedy_sla, 3)} % against ${f(gcw.exact_sla, 2)} % at s = ${gcw.value}.`),
   P('The qualitative reading of that sweep is unchanged: raising s still improves service level, '
-  + `capacity and oscillation together, from ${f(gc0.exact_over, 1)} % over-provisioning and ${f(gc0.exact_osc, 1)} oscillations at `
-  + `s = 0 to ${f(gc1.exact_over, 1)} % and ${f(gc1.exact_osc, 1)} at s = 1. What was not a property of the controller is the size `
+  + `capacity and oscillation together, from ${f(gc0.exact_over, 1)} % over-provisioning and ${f(gc0.exact_osc, 1)} oscillations at `
+  + `s = 0 to ${f(gc1.exact_over, 1)} % and ${f(gc1.exact_osc, 1)} at s = 1. What was not a property of the controller is the size `
   + 'of the effect. The mechanism is the one Section III-E sets out: greedy completion zeroes the '
   + 'tail, a zero tail misprices precisely the term s scales, and raising s magnifies the '
   + 'mispricing. An approximate solver therefore misleads most where the parameter being tuned is '
   + 'the one the approximation distorts, which is not where a reader would think to look for it.'),
   P(`Exactness costs roughly ${(G15.exact_p50_ms / G15.greedy_p50_ms).toFixed(0)} times the compute of the greedy completion. `
-  + `That multiplier is the real price of the claim. In absolute terms the worst observed solve took ${f(G15.exact_max_ms, 1)} ms, or `
-  + `${f(100.0 * G15.exact_max_ms / 5000.0, 2)} % of the five-second control interval, so the multiplier is large and the `
+  + `That multiplier is the real price of the claim. In absolute terms the worst observed solve took ${f(G15.exact_max_ms, 1)} ms, or `
+  + `${f(100.0 * G15.exact_max_ms / 5000.0, 2)} % of the five-second control interval, so the multiplier is large and the `
   + 'absolute cost is not.'),
   P('That cost is not always payable. The reduction in Section III-E is strong when the dead time '
   + 'is long relative to the horizon, and the memoised recursion is cheap when the dead time is '
@@ -584,16 +622,23 @@ const exactGap = [
   + 'two lies a band — a queue long enough to keep states distinct and a horizon long enough to '
   + 'make m large — where neither applies, and there the controller falls back to the greedy '
   + 'completion rather than stall the loop. Every result at the configuration used throughout this '
-  + 'paper is solved exactly. The horizon sweep of Section V-A is the one experiment that crosses '
+  + 'paper is solved exactly. Three experiments vary the horizon or the dead time far enough to cross '
+  + 'the band. '
   + (E5X
-     ? `the band: ${E5X.exact} of its ${E5X.cells} cells are solved exactly and ${E5X.fallback} are not, with each run `
+     ? `In the horizon sweep of Section V-A, ${E5X.exact} of the ${E5X.cells} cells are solved exactly and ${E5X.fallback} are not, with each run `
        + 'recording which solver produced it. '
        + (E5X.edgeExact
           ? 'The fallbacks all sit well above the boundary, where the controller is already at its '
             + 'floor; every cell immediately either side of HΔt = τc is solved exactly, so the '
             + 'transition itself is measured without the approximation.'
           : 'Some of the fallbacks sit next to the boundary, which is noted where those cells are read.')
-     : 'the band, and each run records which solver produced it.')),
+     : 'In the horizon sweep each run records which solver produced it. ')
+  + ` The same grid on recorded traffic (Section V-Q) has ${E18X.fallback} of ${E18X.cells} cells solved by the fallback. `
+  + (E12X.length
+     ? `In the cold-start sweep of Section V-J the horizon is fixed at H = 30, and the predictive controller was solved exactly on `
+       + `${E12EX.length} of its ${E12X.length} cold-start settings `
+       + `(τc = ${E12EX.join(' and ')} s); the other ${E12GR.length} are greedy-completion results and are marked so in Table XIII.`
+     : '')),
 ];
 
 module.exports = { litSection, algos, sensitivity, solvetime, exactGap,

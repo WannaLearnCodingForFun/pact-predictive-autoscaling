@@ -5,7 +5,8 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from experiments.harness import RESULTS, base_config, workload, _relaxed_rounded_u
+from experiments.harness import (RESULTS, _relaxed_rounded_u, base_config,
+                                 initial_replicas, workload)
 from pact.capacity.mapper import map_to_demand
 from pact.config import cold_start_ticks
 from pact.control.gates import apply_gates
@@ -20,8 +21,9 @@ lam = workload("burst", 400, 1001)
 tau = cold_start_ticks(cfg.control.tau_c_s, cfg.telemetry.dt)
 mu, u_star, H = cfg.capacity.mu, cfg.capacity.u_target, cfg.forecast.horizon
 
-sim = PoolSimulator(cfg, n_initial=4)
-n, pending, last_u, last_up = 4, [0] * tau, 0, -1e9
+n0 = initial_replicas(lam, cfg)
+sim = PoolSimulator(cfg, n_initial=n0)
+n, pending, last_u, last_up = n0, [0] * tau, 0, -1e9
 rows = []
 for t in range(len(lam)):
     st = sim.step(float(lam[t]), n)

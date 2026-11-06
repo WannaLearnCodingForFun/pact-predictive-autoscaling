@@ -1,0 +1,11 @@
+workload,tau_c_s,tau_ticks,H,H_dt,covers_coldstart,pact_sla,reactive_sla,improvement_pp,exact_frac,n_runs
+worldcup98_testpeak,15.0,3.0,1,5.0,False,0.0,0.0,0.0,1.0,9
+worldcup98_testpeak,15.0,3.0,2,10.0,False,0.0,0.0,0.0,1.0,9
+worldcup98_testpeak,15.0,3.0,4,20.0,True,0.0,0.0,0.0,1.0,9
+worldcup98_testpeak,15.0,3.0,6,30.0,True,0.0,0.0,0.0,1.0,9
+worldcup98_testpeak,15.0,3.0,8,40.0,True,0.0,0.0,0.0,1.0,9
+worldcup98_testpeak,15.0,3.0,12,60.0,True,0.0,0.0,0.0,1.0,9
+worldcup98_testpeak,15.0,3.0,16,80.0,True,0.0,0.0,0.0,1.0,9
+worldcup98_testpeak,15.0,3.0,20,100.0,True,0.0,0.0,0.0,1.0,9
+worldcup98_testpeak,15.0,3.0,24,120.0,True,0.0,0.0,0.0,1.0,9
+worldcup98_testpeak,15.0,3.0,30,150.0,True,0.0,0.0,0.0,1.0,9

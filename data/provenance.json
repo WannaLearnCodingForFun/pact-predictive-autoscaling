@@ -1,0 +1,523 @@
+{
+  "worldcup98": {
+    "files": [
+      {
+        "file": "wc_day41_1.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day41_1.gz",
+        "records": 6999999,
+        "bytes": 35835041551,
+        "first_ts": 896997601,
+        "last_ts": 897073097,
+        "size_bytes": 45438488,
+        "sha256": "02f93971627c371254544a8640ddd017c07fb62af3ee167a7c1fb176658671ca"
+      },
+      {
+        "file": "wc_day41_2.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day41_2.gz",
+        "records": 1093069,
+        "bytes": 5276701828,
+        "first_ts": 897073097,
+        "last_ts": 897084000,
+        "size_bytes": 7116012,
+        "sha256": "b5e661a5bc26300e7acf7f40b26999b7541ab8a62412fc1d73418821170f1094"
+      },
+      {
+        "file": "wc_day42_1.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day42_1.gz",
+        "records": 5452684,
+        "bytes": 29132326590,
+        "first_ts": 897084001,
+        "last_ts": 897170400,
+        "size_bytes": 35735951,
+        "sha256": "464695919532d31d99dfe115a6f110aedaa4e2ee26268a2ab476e670cc4a3b12"
+      },
+      {
+        "file": "wc_day43_1.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day43_1.gz",
+        "records": 5734309,
+        "bytes": 29639102574,
+        "first_ts": 897170401,
+        "last_ts": 897256800,
+        "size_bytes": 38017277,
+        "sha256": "ea0ccef6d526b0dd796d45b9cf0ee0cfc125cb540ab7a5e2c9ec22c3889f0aca"
+      },
+      {
+        "file": "wc_day44_1.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day44_1.gz",
+        "records": 6999999,
+        "bytes": 35028637232,
+        "first_ts": 897256801,
+        "last_ts": 897310251,
+        "size_bytes": 45275478,
+        "sha256": "b494882a986065f568174bd91d09add89cf5af957ae2eb02442f532390f24176"
+      },
+      {
+        "file": "wc_day44_2.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day44_2.gz",
+        "records": 7000000,
+        "bytes": 33314845274,
+        "first_ts": 897310251,
+        "last_ts": 897340400,
+        "size_bytes": 44879876,
+        "sha256": "a93aca814456442c859127009b75b529e45cf615fd8addec0e1f6778167a373b"
+      },
+      {
+        "file": "wc_day44_3.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day44_3.gz",
+        "records": 527890,
+        "bytes": 2512616410,
+        "first_ts": 897340400,
+        "last_ts": 897343200,
+        "size_bytes": 3398759,
+        "sha256": "a951f885ce1388825f60c14d8631862c1c35c5cf17005e84811f238bcd7d934f"
+      },
+      {
+        "file": "wc_day45_1.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day45_1.gz",
+        "records": 6999999,
+        "bytes": 34802892749,
+        "first_ts": 897343201,
+        "last_ts": 897386308,
+        "size_bytes": 45172581,
+        "sha256": "eb0b4e4e3af0ef836f7336e50af47f2cdbe4f1335e69e468c058db29d81d65da"
+      },
+      {
+        "file": "wc_day45_2.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day45_2.gz",
+        "records": 7000000,
+        "bytes": 33921486048,
+        "first_ts": 897386308,
+        "last_ts": 897409821,
+        "size_bytes": 45230428,
+        "sha256": "fc1d6524eb695a2772733e9ad1c50d33d7aecb9865703cdcfd44de565b0cb233"
+      },
+      {
+        "file": "wc_day45_3.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day45_3.gz",
+        "records": 6068725,
+        "bytes": 28755600226,
+        "first_ts": 897409821,
+        "last_ts": 897429600,
+        "size_bytes": 39133469,
+        "sha256": "9dff17ec3395f4d8933dcc2a0b9c485acb9eed0524095303723a78e99350b9f1"
+      },
+      {
+        "file": "wc_day46_1.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day46_1.gz",
+        "records": 6999999,
+        "bytes": 33316657375,
+        "first_ts": 897429601,
+        "last_ts": 897460922,
+        "size_bytes": 45148753,
+        "sha256": "f676ac324ad3de49bf134148256928a25022ce3b05cf3b424159b3e4395e74d8"
+      },
+      {
+        "file": "wc_day46_2.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day46_2.gz",
+        "records": 7000000,
+        "bytes": 32455778436,
+        "first_ts": 897460922,
+        "last_ts": 897480870,
+        "size_bytes": 45408890,
+        "sha256": "94a9c098407535d4b699f322b8aa93e4bf7b0eec6c643553b5704ad990bd6ed5"
+      },
+      {
+        "file": "wc_day46_3.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day46_3.gz",
+        "records": 7000000,
+        "bytes": 29496200178,
+        "first_ts": 897480870,
+        "last_ts": 897491395,
+        "size_bytes": 45122316,
+        "sha256": "c6059376a36252b78ea43c6a09b36118686e3ad0783204a3d6539db2bdded7c1"
+      },
+      {
+        "file": "wc_day46_4.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day46_4.gz",
+        "records": 7000000,
+        "bytes": 20094200913,
+        "first_ts": 897491395,
+        "last_ts": 897495663,
+        "size_bytes": 43728021,
+        "sha256": "f6321e1ecc2cffdab6dff7386f9120e8714072253e2969835ae6d5eed7946b3b"
+      },
+      {
+        "file": "wc_day46_5.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day46_5.gz",
+        "records": 7000000,
+        "bytes": 21134590705,
+        "first_ts": 897495663,
+        "last_ts": 897499602,
+        "size_bytes": 43396538,
+        "sha256": "41f1b1cd3dc43aac4b859e420edf35eae004b305f7e267a4eb0e8913723703a1"
+      },
+      {
+        "file": "wc_day46_6.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day46_6.gz",
+        "records": 7000000,
+        "bytes": 26418740912,
+        "first_ts": 897499602,
+        "last_ts": 897506690,
+        "size_bytes": 44394897,
+        "sha256": "73aecb32fad06dfd55390e9891e9b7058dd2c85f1e8a4732ca2e3133e0339fe2"
+      },
+      {
+        "file": "wc_day46_7.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day46_7.gz",
+        "records": 7000000,
+        "bytes": 23256212397,
+        "first_ts": 897506690,
+        "last_ts": 897513798,
+        "size_bytes": 42849832,
+        "sha256": "e7ccfc67e70993416968bb087c79f4f95118bfbaa78f9597d938081c7e5c55ef"
+      },
+      {
+        "file": "wc_day46_8.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day46_8.gz",
+        "records": 1395085,
+        "bytes": 5644664435,
+        "first_ts": 897513798,
+        "last_ts": 897516000,
+        "size_bytes": 8675387,
+        "sha256": "b321be8210c13a5956c5b0d2af1cd9618c7783a43422e7bdcf4740e4b7d90ab9"
+      },
+      {
+        "file": "wc_day47_1.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day47_1.gz",
+        "records": 6999999,
+        "bytes": 28455556828,
+        "first_ts": 897516001,
+        "last_ts": 897531400,
+        "size_bytes": 43357887,
+        "sha256": "63011c8fe5fd0ba03d4d764e670c97d35a260fe012d71e9d3cb4f3adb0e9f6b0"
+      },
+      {
+        "file": "wc_day47_2.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day47_2.gz",
+        "records": 7000000,
+        "bytes": 30431797202,
+        "first_ts": 897531400,
+        "last_ts": 897550898,
+        "size_bytes": 43717170,
+        "sha256": "c3184d14190e633cc223ab38389fa073e53413b0d017e4d608cfb56f23363162"
+      },
+      {
+        "file": "wc_day47_3.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day47_3.gz",
+        "records": 7000000,
+        "bytes": 30725207522,
+        "first_ts": 897550898,
+        "last_ts": 897567785,
+        "size_bytes": 44115291,
+        "sha256": "5873e97bff935994b8a688a2dc027db350e387a2bf4b4994cdc00ac2ce978284"
+      },
+      {
+        "file": "wc_day47_4.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day47_4.gz",
+        "records": 7000000,
+        "bytes": 28403669550,
+        "first_ts": 897567785,
+        "last_ts": 897579058,
+        "size_bytes": 43668568,
+        "sha256": "1988e1834de26d1af6566b0575b76bb95c44a0898ccb81cf13f46a190da112a6"
+      },
+      {
+        "file": "wc_day47_5.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day47_5.gz",
+        "records": 7000000,
+        "bytes": 20993833306,
+        "first_ts": 897579058,
+        "last_ts": 897583912,
+        "size_bytes": 42461330,
+        "sha256": "329502e063d2660c8d520c710c26ec85b75276c042c5218472c1fc6c170c59fa"
+      },
+      {
+        "file": "wc_day47_6.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day47_6.gz",
+        "records": 7000000,
+        "bytes": 23741409126,
+        "first_ts": 897583912,
+        "last_ts": 897589392,
+        "size_bytes": 42649490,
+        "sha256": "d980ae3ef5ff8f06d606e8a4feb38af80bc41fff6e9d04109d7f2bd9e6563c1e"
+      },
+      {
+        "file": "wc_day47_7.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day47_7.gz",
+        "records": 7000000,
+        "bytes": 24296647058,
+        "first_ts": 897589392,
+        "last_ts": 897597915,
+        "size_bytes": 42737880,
+        "sha256": "57c01020dcc3f4dd686533c50de71496fbeca7e5d1bb6e2f1123b3be959f0391"
+      },
+      {
+        "file": "wc_day47_8.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day47_8.gz",
+        "records": 3406320,
+        "bytes": 12592486939,
+        "first_ts": 897597915,
+        "last_ts": 897602400,
+        "size_bytes": 20947563,
+        "sha256": "f95a12e76cf836e495255d07cb6db759a2737fa94c528c01b037499d40158df5"
+      },
+      {
+        "file": "wc_day48_1.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day48_1.gz",
+        "records": 6999999,
+        "bytes": 28971741034,
+        "first_ts": 897602401,
+        "last_ts": 897619878,
+        "size_bytes": 43924686,
+        "sha256": "80d8754a707585a6879ce514dd71ff533bc9af8be03ab999a2301c1e613affcc"
+      },
+      {
+        "file": "wc_day48_2.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day48_2.gz",
+        "records": 7000000,
+        "bytes": 30460973452,
+        "first_ts": 897619878,
+        "last_ts": 897641637,
+        "size_bytes": 44879581,
+        "sha256": "4cd0a5fa1f50925968303743922480873af90f06dda9eb7f306db36659281d9c"
+      },
+      {
+        "file": "wc_day48_3.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day48_3.gz",
+        "records": 7000000,
+        "bytes": 28306135238,
+        "first_ts": 897641637,
+        "last_ts": 897656818,
+        "size_bytes": 44828963,
+        "sha256": "230dc824a172fdc86b4ea320af64bec32a7e7363312c32732512511952524d49"
+      },
+      {
+        "file": "wc_day48_4.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day48_4.gz",
+        "records": 7000000,
+        "bytes": 23334008426,
+        "first_ts": 897656818,
+        "last_ts": 897662413,
+        "size_bytes": 43973614,
+        "sha256": "f648eef0967e1f5bd63a8e9dd0bb2caa65572f9223a349c5f4e0eba806c2caf2"
+      },
+      {
+        "file": "wc_day48_5.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day48_5.gz",
+        "records": 7000000,
+        "bytes": 24378373720,
+        "first_ts": 897662413,
+        "last_ts": 897669636,
+        "size_bytes": 44454408,
+        "sha256": "e907881e9bbae040ce65c04691457f7158e847e9284631ca91a6f23938f8031b"
+      },
+      {
+        "file": "wc_day48_6.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day48_6.gz",
+        "records": 7000000,
+        "bytes": 25605136297,
+        "first_ts": 897669636,
+        "last_ts": 897678684,
+        "size_bytes": 44144866,
+        "sha256": "ed5c3c894077160a8441009e6770c7b4c2400d5219d8f350537945e08787dff5"
+      },
+      {
+        "file": "wc_day48_7.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day48_7.gz",
+        "records": 6956622,
+        "bytes": 24533752043,
+        "first_ts": 897678684,
+        "last_ts": 897688800,
+        "size_bytes": 43368404,
+        "sha256": "b3ff4f3de6ae4e66f7abdb099b829d80a17cf4ca13973cacdb3ce5fd17fe24e9"
+      },
+      {
+        "file": "wc_day49_1.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day49_1.gz",
+        "records": 6999999,
+        "bytes": 29831320246,
+        "first_ts": 897688801,
+        "last_ts": 897716006,
+        "size_bytes": 45535146,
+        "sha256": "512f82572dee64c9cd027a434f9f02ceb654e93c463cf23f5103fb99f63c639e"
+      },
+      {
+        "file": "wc_day49_2.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day49_2.gz",
+        "records": 7000000,
+        "bytes": 30116957965,
+        "first_ts": 897716006,
+        "last_ts": 897748802,
+        "size_bytes": 45395539,
+        "sha256": "590fa2001106ac5e40a63999d2d76da32e53f5d5de6b058c9178915a245a59ed"
+      },
+      {
+        "file": "wc_day49_3.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day49_3.gz",
+        "records": 7000000,
+        "bytes": 27849737717,
+        "first_ts": 897748802,
+        "last_ts": 897766760,
+        "size_bytes": 45225530,
+        "sha256": "289d5828b5f467eb7b1d308627c2297e16b892ba5e0d98dcf6a2754e48bef9c7"
+      },
+      {
+        "file": "wc_day49_4.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day49_4.gz",
+        "records": 2528987,
+        "bytes": 10106004001,
+        "first_ts": 897766760,
+        "last_ts": 897775200,
+        "size_bytes": 16408821,
+        "sha256": "8ae3f8b8fc97f4e340dcf79e832f8e6007647cfedaff0e19c4a5d9bd984a0f99"
+      },
+      {
+        "file": "wc_day50_1.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day50_1.gz",
+        "records": 6999999,
+        "bytes": 30201045821,
+        "first_ts": 897775201,
+        "last_ts": 897809678,
+        "size_bytes": 46198941,
+        "sha256": "b22304c4c8a36f2d44a546aaba67e828174f279ab5713ea40250e998f8e6a23f"
+      },
+      {
+        "file": "wc_day50_2.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day50_2.gz",
+        "records": 7000000,
+        "bytes": 28367308965,
+        "first_ts": 897809678,
+        "last_ts": 897839201,
+        "size_bytes": 45754644,
+        "sha256": "729a2cedbfb80ae11a37e998df9092fa02454b37d5eaa6d33550c42478cd0e86"
+      },
+      {
+        "file": "wc_day50_3.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day50_3.gz",
+        "records": 7000000,
+        "bytes": 27940351564,
+        "first_ts": 897839201,
+        "last_ts": 897861223,
+        "size_bytes": 45813902,
+        "sha256": "3bc0c6626d923cdb36b82cab409046e274df83cd9d31f174639b7a1ef92d946d"
+      },
+      {
+        "file": "wc_day50_4.gz",
+        "url": "https://ita.ee.lbl.gov/traces/WorldCup/wc_day50_4.gz",
+        "records": 93495,
+        "bytes": 395033916,
+        "first_ts": 897861223,
+        "last_ts": 897861600,
+        "size_bytes": 622907,
+        "sha256": "a3c59ba542c46b8a557e0649c8327f0e65f9bc3062ca5796d68f0d794bccd4a7"
+      }
+    ],
+    "tools_archive": {
+      "file": "WorldCup_tools.tar.gz",
+      "url": "https://ita.ee.lbl.gov/traces/WorldCup/WorldCup_tools.tar.gz",
+      "size_bytes": 1054926,
+      "sha256": "838e8eed0c10026a520528002c412a11afc723a53a4f86be1a70b2c07dacc551"
+    },
+    "validation": "every file decoded in full and matched against the checklog reference in the tools archive: total requests, total bytes, min/max timestamp, out-of-order count, unique servers and per-server counts",
+    "subset_requests": 250257178,
+    "derived": {
+      "name": "worldcup98",
+      "source": "https://ita.ee.lbl.gov/html/contrib/WorldCup.html",
+      "days": [
+        41,
+        50
+      ],
+      "t0_utc_epoch_s": 896997601,
+      "t0_paris_local": "1998-06-05 00:00:01",
+      "dt_s": 5,
+      "n_bins": 172800,
+      "total_requests": 250257178,
+      "raw_peak_req_s": 2316.2,
+      "raw_mean_req_s": 289.64951157407404,
+      "raw_peak_bin": 100419,
+      "pool_capacity_req_s": 640.0,
+      "peak_fraction_of_capacity": 0.85,
+      "scale_factor": 0.23486745531473968,
+      "scaled_peak_req_s": 544.0,
+      "scaled_mean_req_s": 68.02924371656,
+      "transform": "lambda = (requests per 5 s bin / 5) * scale_factor; no smoothing",
+      "train_fraction": 0.6,
+      "val_fraction": 0.2,
+      "train_end": 103680,
+      "val_end": 138240,
+      "sha256_scaled_npy": "d4e13d6fb5a75e4f4d2ecd9869923c55f1fd39b1d651ee37874bf6eaf8ab444d",
+      "sha256_raw_npy": "dbbb6c91d2c37363efe74f62a621416e1ab7b354ca94ca23fd7b2c4f6b7de018",
+      "test_peak_req_s": 134.95483982384943
+    },
+    "derived_testpeak": {
+      "name": "worldcup98_testpeak",
+      "source": "https://ita.ee.lbl.gov/html/contrib/WorldCup.html",
+      "days": [
+        41,
+        50
+      ],
+      "t0_utc_epoch_s": 896997601,
+      "t0_paris_local": "1998-06-05 00:00:01",
+      "dt_s": 5,
+      "n_bins": 172800,
+      "total_requests": 250257178,
+      "raw_peak_req_s": 2316.2,
+      "raw_mean_req_s": 289.64951157407404,
+      "raw_peak_bin": 100419,
+      "pool_capacity_req_s": 640.0,
+      "peak_fraction_of_capacity": 0.85,
+      "scale_factor": 0.9467455621301776,
+      "scaled_peak_req_s": 2192.852071005917,
+      "scaled_mean_req_s": 274.2243896559281,
+      "transform": "lambda = worldcup98 lambda * extra_scale, chosen so the test-split peak is peak_fraction_of_capacity of the pool",
+      "train_fraction": 0.6,
+      "val_fraction": 0.2,
+      "train_end": 103680,
+      "val_end": 138240,
+      "derived_from": "worldcup98",
+      "extra_scale": 4.030978071702053,
+      "test_peak_req_s": 544.0,
+      "sha256_scaled_npy": "cbb47bb8d309e17969a253bcaf39a593cabb64ac88efd4b0d8f4a6e4ef0de418"
+    },
+    "source": "https://ita.ee.lbl.gov/html/contrib/WorldCup.html",
+    "download_base_url": "https://ita.ee.lbl.gov/traces/WorldCup/",
+    "retrieved_utc": "2026-11-05T16:57:14Z",
+    "licence": "Copyright (C) 1997, 1998, 1999 Hewlett-Packard Company. The software and documentation may be used, reproduced, modified and distributed for non-commercial purposes only. The access logs may be used and redistributed freely as long as the Copyright and Disclaimer is distributed unmodified (data/WORLDCUP98_COPYRIGHT.txt). Publications must give the attribution above, and the ITA asks for a copy of any publication based on the logs.",
+    "attribution": "M. Arlitt and T. Jin, \"1998 World Cup Web Site Access Logs\", August 1998. Available at http://www.acm.org/sigcomm/ITA/.",
+    "subset": {
+      "days": [
+        41,
+        50
+      ],
+      "dates_paris_local": [
+        "1998-06-05",
+        "1998-06-14"
+      ],
+      "day_dates": {
+        "41": "1998-06-05",
+        "42": "1998-06-06",
+        "43": "1998-06-07",
+        "44": "1998-06-08",
+        "45": "1998-06-09",
+        "46": "1998-06-10",
+        "47": "1998-06-11",
+        "48": "1998-06-12",
+        "49": "1998-06-13",
+        "50": "1998-06-14"
+      },
+      "n_files": 41,
+      "day_boundary_observed": "each day's files run from 00:00:01 Paris time to 00:00:00 the next day inclusive (checklog Start/Finish Time); bins follow that"
+    }
+  },
+  "bitbrains_gwa_t_12": {
+    "status": "located and verified, not used",
+    "landing_page": "https://atlarge-research.com/gwa-t-12/",
+    "archives": {
+      "https://atlarge-research.com/gwa-traces/gwa_t_12_fastStorage.zip": 134047207,
+      "https://atlarge-research.com/gwa-traces/gwa_t_12_rnd.zip": 163099172
+    },
+    "archive_sizes": "Content-Length from HTTP 200 responses, bytes",
+    "citation": "S. Shen, V. van Beek, and A. Iosup, \"Statistical characterization of business-critical workloads hosted in cloud datacenters,\" in Proc. 15th IEEE/ACM Int. Symp. Cluster, Cloud and Grid Computing (CCGrid), 2015.",
+    "reason_not_used": "per-VM CPU and memory utilisation sampled every 5 minutes, not request arrivals. Driving the 5 s harness would need 60x temporal interpolation, which invents every sub-5-minute dynamic the controller reacts to, and an inversion of utilisation through the capacity model to an implied arrival rate, which assumes the very model under test."
+  }
+}

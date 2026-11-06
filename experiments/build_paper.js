@@ -18,14 +18,31 @@ const FIG = path.join(ROOT, 'figures');
 const F = 'Times New Roman';
 
 // ----------------------------------------------------------- csv loader
+function splitCsvLine(l) {
+  // csv.DictWriter quotes fields containing commas and doubles embedded quotes
+  const out = [];
+  let cur = '', q = false;
+  for (let i = 0; i < l.length; i++) {
+    const c = l[i];
+    if (q) {
+      if (c === '"' && l[i + 1] === '"') { cur += '"'; i++; }
+      else if (c === '"') q = false;
+      else cur += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { out.push(cur); cur = ''; }
+    else cur += c;
+  }
+  out.push(cur);
+  return out;
+}
+
 function csv(name) {
   const txt = fs.readFileSync(path.join(RES, name), 'utf8')
     .replace(/\r/g, '').trim();
   const [head, ...lines] = txt.split('\n');
-  const keys = head.split(',');
+  const keys = splitCsvLine(head);
   return lines.map(l => {
-    // no quoted fields are produced by the writer
-    const v = l.split(',');
+    const v = splitCsvLine(l);
     const o = {};
     keys.forEach((k, i) => {
       const raw = v[i];
@@ -52,6 +69,17 @@ const E15 = JSON.parse(fs.readFileSync(path.join(RES, 'e15_exact_vs_greedy.json'
 const E8C = csv('e8_solver_compare.csv');
 const RT = csv('runtime_stages.csv');
 const E15T = csv('e15_ticks.csv');
+const E16 = csv('e16_forecast_accuracy.csv');
+const E17 = csv('e17_trained_summary.csv');
+const E17B = csv('e17_bracket_check.csv');
+const E18 = csv('e18_horizon_law_real.csv');
+const E19 = csv('e19_robustness_real.csv');
+const E20 = csv('e20_initial_state.csv');
+const json = p => JSON.parse(fs.readFileSync(path.join(RES, p), 'utf8'));
+const WC = json('traces/worldcup98.json');
+const WCT = json('traces/worldcup98_testpeak.json');
+const TCN = json('checkpoints/tcn.json');
+const PROV = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'provenance.json'), 'utf8'));
 // Fraction of the horizon sweep solved exactly (the rest fell back; see the
 // tractability guard in pact/control/mpc_exact.py). Older result files have
 // no such column, in which case this is reported as unknown.
@@ -77,6 +105,19 @@ const E5X = (() => {
 
 const by = (rows, k, v) => rows.find(r => r[k] === v);
 const f = (x, n = 2) => Number(x).toFixed(n);
+
+// Which workload families an experiment used, described for a caption.
+const REAL_FAMS = ['worldcup98', 'worldcup98_testpeak'];
+const uniq = rows => [...new Set(rows.map(r => r.workload))];
+function fams(wls) {
+  const s = wls.filter(w => !REAL_FAMS.includes(w)).length;
+  const r = wls.filter(w => REAL_FAMS.includes(w)).length;
+  const word = n => ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'][n] ?? String(n);
+  if (!r) return `Synthetic traces, ${s} famil${s === 1 ? 'y' : 'ies'}`;
+  if (!s) return `Recorded WorldCup98 traffic, ${r} scaling${r === 1 ? '' : 's'}`;
+  const out = `${word(s)} synthetic families and ${word(r)} recorded WorldCup98 scaling${r === 1 ? '' : 's'}`;
+  return out.charAt(0).toUpperCase() + out.slice(1);
+}
 
 // ----------------------------------------------------------- helpers
 function P(text, o = {}) {
@@ -350,4 +391,5 @@ module.exports = {
   d, P, RUNS, H1, H2, H3, CAP, BUL, EQ, EQI, M, MathRun, MathFraction, MathSum,
   MathRadical, sub, sup, img, mkTable, csv, E1, E2, E3, E4, E5, E6, E7, E8,
   E9, E10, E11, E12, E15, E15T, E5X, E8C, RT, MAN, by, f, F, TEXT_W, COL_W, COL_GAP, fitW,
+  E16, E17, E17B, E18, E19, E20, WC, WCT, TCN, PROV, REAL_FAMS, uniq, fams, RES,
 };
