@@ -1,0 +1,10 @@
+{
+  "runner": "experiments/run_tests.py",
+  "pytest": "real pytest",
+  "files": 24,
+  "passed": 145,
+  "failed": 0,
+  "skipped_fixture_based": 42,
+  "import_errors": [],
+  "failures": []
+}

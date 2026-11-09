@@ -1,0 +1,30 @@
+{
+  "name": "worldcup98_testpeak",
+  "source": "https://ita.ee.lbl.gov/html/contrib/WorldCup.html",
+  "days": [
+    41,
+    50
+  ],
+  "t0_utc_epoch_s": 896997601,
+  "t0_paris_local": "1998-06-05 00:00:01",
+  "dt_s": 5,
+  "n_bins": 172800,
+  "total_requests": 250257178,
+  "raw_peak_req_s": 2316.2,
+  "raw_mean_req_s": 289.64951157407404,
+  "raw_peak_bin": 100419,
+  "pool_capacity_req_s": 640.0,
+  "peak_fraction_of_capacity": 0.85,
+  "scale_factor": 0.9467455621301776,
+  "scaled_peak_req_s": 2192.852071005917,
+  "scaled_mean_req_s": 274.2243896559281,
+  "transform": "lambda = worldcup98 lambda * extra_scale, chosen so the test-split peak is peak_fraction_of_capacity of the pool",
+  "train_fraction": 0.6,
+  "val_fraction": 0.2,
+  "train_end": 103680,
+  "val_end": 138240,
+  "derived_from": "worldcup98",
+  "extra_scale": 4.030978071702053,
+  "test_peak_req_s": 544.0,
+  "sha256_scaled_npy": "cbb47bb8d309e17969a253bcaf39a593cabb64ac88efd4b0d8f4a6e4ef0de418"
+}

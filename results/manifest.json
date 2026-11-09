@@ -1,0 +1,142 @@
+{
+  "generated_utc": "2026-11-06T01:20:57Z",
+  "git_sha": "8365d9356dcdeec4e923263d7c71f44ede61f2ed",
+  "git_dirty": true,
+  "git_sha_on_remote": true,
+  "git_note": "results were produced from uncommitted changes on top of git_sha; regenerate the manifest after committing and pushing",
+  "torch": "2.14.0",
+  "statsmodels": "0.15.0",
+  "python": "3.11.14",
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "numpy": "2.4.6",
+  "n_ticks_per_run": 400,
+  "n_seeds": 10,
+  "workloads": [
+    "diurnal",
+    "burst",
+    "ramp",
+    "step",
+    "sawtooth",
+    "worldcup98",
+    "worldcup98_testpeak"
+  ],
+  "plant": "pact.sim.queue_model.PoolSimulator (analytical, Kingman p95)",
+  "start_state": "every run starts with max(4, ceil(lambda[0] / (mu * u_target))) replicas, capped at n_max (experiments.harness.initial_replicas); earlier result sets used a fixed 4, which on recorded windows put every violation in the start-up transient (e20_initial_state.csv)",
+  "mpc_solver": "pact.control.mpc_exact.solve_mpc_exact -- globally optimal integer solve, validated against exhaustive enumeration in tests/test_mpc_exact.py and experiments/verify_exact.py",
+  "superseded_solver": "pact.control.mpc.solve_mpc enumerates first actions but completes the horizon greedily, so its first action is not globally optimal; it is retained only as the comparison arm of e15",
+  "executed": [
+    "e1_runs.csv",
+    "e1_summary.csv",
+    "e2_significance.csv",
+    "e3_rounding_gap.csv",
+    "e4_ablation_runs.csv",
+    "e4_ablation_summary.csv",
+    "e5_horizon_law.csv",
+    "e6_frontier.csv",
+    "e7_robustness.csv",
+    "e8_sensitivity.csv",
+    "e8_solver_compare.csv",
+    "e9_solvetime.csv",
+    "e10_per_workload.csv",
+    "e11_decisions.csv",
+    "e12_coldstart.csv",
+    "e13_predictor_quality.csv",
+    "e14_inference_trace.csv",
+    "e15_exact_vs_greedy.json",
+    "e15_validation.json",
+    "e16_forecast_accuracy.csv",
+    "e17_trained_runs.csv",
+    "e17_trained_summary.csv",
+    "e17_bracket_check.csv",
+    "e18_horizon_law_real.csv",
+    "e19_robustness_real.csv",
+    "e20_initial_state.csv",
+    "e21_bias_probe.csv",
+    "e22_margin_ceiling_ablation.csv"
+  ],
+  "real_traces": {
+    "worldcup98": {
+      "scale_factor": 0.23486745531473968,
+      "scaled_peak_req_s": 544.0,
+      "test_peak_req_s": 134.95483982384943,
+      "train_end": 103680,
+      "val_end": 138240,
+      "sha256_scaled_npy": "d4e13d6fb5a75e4f4d2ecd9869923c55f1fd39b1d651ee37874bf6eaf8ab444d"
+    },
+    "worldcup98_testpeak": {
+      "scale_factor": 0.9467455621301776,
+      "scaled_peak_req_s": 2192.852071005917,
+      "test_peak_req_s": 544.0,
+      "train_end": 103680,
+      "val_end": 138240,
+      "sha256_scaled_npy": "cbb47bb8d309e17969a253bcaf39a593cabb64ac88efd4b0d8f4a6e4ef0de418"
+    }
+  },
+  "checkpoints": {
+    "arima": {
+      "kind": "arima",
+      "seed": 0,
+      "n_params": 5,
+      "order": [
+        2,
+        1,
+        2
+      ],
+      "aic": 546796.7199299112
+    },
+    "bilstm": {
+      "kind": "bilstm",
+      "seed": 0,
+      "n_params": 188280,
+      "epochs_run": 9,
+      "best_val_loss": 0.0012974296904996446,
+      "train_device": "mps",
+      "torch": "2.14.0"
+    },
+    "gru": {
+      "kind": "gru",
+      "seed": 0,
+      "n_params": 188148,
+      "epochs_run": 9,
+      "best_val_loss": 0.0011628828905878201,
+      "train_device": "mps",
+      "torch": "2.14.0"
+    },
+    "lstm": {
+      "kind": "lstm",
+      "seed": 0,
+      "n_params": 189128,
+      "epochs_run": 9,
+      "best_val_loss": 0.0013016234858993843,
+      "train_device": "mps",
+      "torch": "2.14.0"
+    },
+    "tcn": {
+      "kind": "tcn",
+      "seed": 0,
+      "n_params": 188504,
+      "epochs_run": 17,
+      "best_val_loss": 0.0011786192386638258,
+      "train_device": "mps",
+      "torch": "2.14.0"
+    },
+    "transformer": {
+      "kind": "transformer",
+      "seed": 0,
+      "n_params": 188132,
+      "epochs_run": 18,
+      "best_val_loss": 0.0011720954695604502,
+      "train_device": "mps",
+      "torch": "2.14.0"
+    }
+  },
+  "not_executed": {
+    "Docker testbed and measured cold start": "no Docker daemon in this environment",
+    "Bitbrains GWA-T-12": "archives located and verified (data/provenance.json) but not used: 5-minute per-VM utilisation, not request arrivals; driving a 5 s controller would need 60x interpolation",
+    "Trained forecaster in the horizon sweep (E18)": "the checkpoint has a fixed horizon H = 12; E18 varies H and so uses the oracle forecaster, as E5 does",
+    "Training-variance estimate": "every forecaster in E16 was trained from one seed; no spread across training runs was measured",
+    "Cause of the trained arm's churn reduction": "E21 shows the TCN's mean bias does not reproduce it; the smoothing hypothesis suggested by E13 was not tested",
+    "Margin and ceiling ablation under imperfect predictors on synthetic traffic": "E22 covers the recorded windows only; E4 covers the synthetic families under the oracle only"
+  },
+  "forecaster_arms": "Controllers are driven by a trained TCN forecasting the arrival rate (E17, E22, recorded trace only, frozen checkpoint, no training at evaluation time) and by two bracketing predictors, perfect foresight and persistence, which every experiment uses so that controller effects can be separated from forecaster quality."
+}

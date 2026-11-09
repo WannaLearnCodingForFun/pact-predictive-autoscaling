@@ -1,0 +1,61 @@
+# macOS
+.DS_Store
+~$*
+data/processed/
+
+# Downloaded traces and experiment outputs
+data/raw/
+results/
+figures/
+
+# ...except the measured outputs and plots the paper is built from.
+# These are the paper's evidence base: every table and figure in
+# PACT_paper.docx is generated from them, so they are version-controlled.
+!results/
+!results/*.csv
+!results/manifest.json
+# Derived real-trace series (the raw archives stay out: data/raw/), frozen
+# forecaster checkpoints with their metadata and training logs, and the
+# per-model horizon-error parts that e16_forecast_accuracy.csv is built from.
+!results/traces/
+!results/traces/*.npy
+!results/traces/*.json
+!results/checkpoints/
+!results/checkpoints/*.pt
+!results/checkpoints/*.json
+!results/checkpoints/*.csv
+!results/e16_parts/
+!results/e16_parts/*.csv
+!results/e17_parts/
+!results/e17_parts/*.csv
+!results/e18_parts/
+!results/e18_parts/*.csv
+!results/e21_parts/
+!results/e21_parts/*.csv
+!results/e22_parts/
+!results/e22_parts/*.csv
+!results/*.json
+!figures/
+!figures/fig_*.png
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+
+# Tooling caches
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# transient experiment run logs
+results/*.log
+results/e8_sensitivity.partial.csv

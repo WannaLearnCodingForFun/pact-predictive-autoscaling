@@ -1,0 +1,3 @@
+# Ablation: freeze γ and disable Module 5 updates.
+ablation:
+  freeze_gamma: true

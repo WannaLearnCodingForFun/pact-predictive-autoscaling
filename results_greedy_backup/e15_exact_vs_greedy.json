@@ -1,0 +1,31 @@
+{
+  "validation": {
+    "cases": 400,
+    "exact_attains_optimum": 400,
+    "greedy_first_action_optimal": 354,
+    "greedy_excess_mean": 7.968375000000001,
+    "greedy_excess_max": 192.80000000000007
+  },
+  "paper_config": {
+    "tau": 9,
+    "horizon": 12,
+    "m": 4,
+    "lag": 9,
+    "ticks": 1200,
+    "agree": 1070,
+    "agree_pct": 89.16666666666667,
+    "greedy_worse": 540,
+    "greedy_worse_pct": 45.0,
+    "greedy_better": 0,
+    "cost_excess_mean": 1.969666666666676,
+    "cost_excess_max": 31.8,
+    "rel_excess_mean_pct": 1.1484917782795085,
+    "rel_excess_max_pct": 99.53051643192488,
+    "exact_p50_ms": 28.34074099996542,
+    "exact_p95_ms": 40.938764999964405,
+    "exact_max_ms": 90.92443099984848,
+    "greedy_p50_ms": 0.2688520000901917,
+    "greedy_p95_ms": 0.3973430000314693,
+    "greedy_max_ms": 1.4686409999740135
+  }
+}
